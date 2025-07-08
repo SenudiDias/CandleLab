@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "231886046583",
+    "project_id": "candlelab-c846c",
+    "storage_bucket": "candlelab-c846c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:231886046583:android:93c04d21260a1fb8d34d72",
+        "android_client_info": {
+          "package_name": "com.example.candle_lab_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAD4GusJjjzlbGZdVD6Vo2gc3RzQyBikKo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,5 +1,6 @@
 // lib/models/candle_data.dart
 // import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 class WaxDetail {
   String waxType;
@@ -222,6 +223,97 @@ class ColourDetail {
   );
 }
 
+class TemperatureDetail {
+  double maxHeatedC;
+  double maxHeatedF;
+  double fragranceMixingC;
+  double fragranceMixingF;
+  double pouringC;
+  double pouringF;
+  double ambientTempC;
+  double ambientTempF;
+  List<String> photoPaths;
+
+  TemperatureDetail({
+    this.maxHeatedC = 0.0,
+    this.maxHeatedF = 0.0,
+    this.fragranceMixingC = 0.0,
+    this.fragranceMixingF = 0.0,
+    this.pouringC = 0.0,
+    this.pouringF = 0.0,
+    this.ambientTempC = 0.0,
+    this.ambientTempF = 0.0,
+    this.photoPaths = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+    'maxHeatedC': maxHeatedC,
+    'maxHeatedF': maxHeatedF,
+    'fragranceMixingC': fragranceMixingC,
+    'fragranceMixingF': fragranceMixingF,
+    'pouringC': pouringC,
+    'pouringF': pouringF,
+    'ambientTempC': ambientTempC,
+    'ambientTempF': ambientTempF,
+    'photoPaths': photoPaths,
+  };
+
+  factory TemperatureDetail.fromJson(Map<String, dynamic> json) =>
+      TemperatureDetail(
+        maxHeatedC: json['maxHeatedC']?.toDouble() ?? 0.0,
+        maxHeatedF: json['maxHeatedF']?.toDouble() ?? 0.0,
+        fragranceMixingC: json['fragranceMixingC']?.toDouble() ?? 0.0,
+        fragranceMixingF: json['fragranceMixingF']?.toDouble() ?? 0.0,
+        pouringC: json['pouringC']?.toDouble() ?? 0.0,
+        pouringF: json['pouringF']?.toDouble() ?? 0.0,
+        ambientTempC: json['ambientTempC']?.toDouble() ?? 0.0,
+        ambientTempF: json['ambientTempF']?.toDouble() ?? 0.0,
+        photoPaths: List<String>.from(json['photoPaths'] ?? []),
+      );
+}
+
+class CoolingCuringDetail {
+  double coolDownTime;
+  int curingDays;
+  DateTime? burningDay;
+  TimeOfDay? reminderTime;
+  List<String> photoPaths;
+
+  CoolingCuringDetail({
+    this.coolDownTime = 0.0,
+    this.curingDays = 0,
+    this.burningDay,
+    this.reminderTime,
+    this.photoPaths = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+    'coolDownTime': coolDownTime,
+    'curingDays': curingDays,
+    'burningDay': burningDay?.toIso8601String(),
+    'reminderTime': reminderTime != null
+        ? {'hour': reminderTime!.hour, 'minute': reminderTime!.minute}
+        : null,
+    'photoPaths': photoPaths,
+  };
+
+  factory CoolingCuringDetail.fromJson(Map<String, dynamic> json) =>
+      CoolingCuringDetail(
+        coolDownTime: json['coolDownTime']?.toDouble() ?? 0.0,
+        curingDays: json['curingDays'] ?? 0,
+        burningDay: json['burningDay'] != null
+            ? DateTime.parse(json['burningDay'])
+            : null,
+        reminderTime: json['reminderTime'] != null
+            ? TimeOfDay(
+                hour: json['reminderTime']['hour'],
+                minute: json['reminderTime']['minute'],
+              )
+            : null,
+        photoPaths: List<String>.from(json['photoPaths'] ?? []),
+      );
+}
+
 class CandleData {
   String? sampleName;
   String? candleType;
@@ -236,6 +328,8 @@ class CandleData {
   WickDetail? wickDetail;
   ScentDetail? scentDetail;
   ColourDetail? colourDetail;
+  TemperatureDetail? temperatureDetail;
+  CoolingCuringDetail? coolingCuringDetail;
   static List<String> availableScentTypes = ['Seasalt', 'Driftwood'];
 
   CandleData({
@@ -252,6 +346,8 @@ class CandleData {
     this.wickDetail,
     this.scentDetail,
     this.colourDetail,
+    this.temperatureDetail,
+    this.coolingCuringDetail,
   }) : waxTypes = waxTypes != null
            ? List<String>.from(waxTypes)
            : List<String>.empty(growable: true),
@@ -273,6 +369,8 @@ class CandleData {
     'wickDetail': wickDetail?.toJson(),
     'scentDetail': scentDetail?.toJson(),
     'colourDetail': colourDetail?.toJson(),
+    'temperatureDetail': temperatureDetail?.toJson(),
+    'coolingCuringDetail': coolingCuringDetail?.toJson(),
     // 'createdAt': FieldValue.serverTimestamp(),
   };
 
@@ -305,6 +403,12 @@ class CandleData {
         : null,
     colourDetail: json['colourDetail'] != null
         ? ColourDetail.fromJson(json['colourDetail'])
+        : null,
+    temperatureDetail: json['temperatureDetail'] != null
+        ? TemperatureDetail.fromJson(json['temperatureDetail'])
+        : null,
+    coolingCuringDetail: json['coolingCuringDetail'] != null
+        ? CoolingCuringDetail.fromJson(json['coolingCuringDetail'])
         : null,
   );
 }

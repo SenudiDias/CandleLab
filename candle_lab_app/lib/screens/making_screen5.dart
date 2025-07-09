@@ -131,16 +131,16 @@ class _MakingScreen5State extends State<MakingScreen5> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF795548),
+        backgroundColor: const Color(0xFF795548), // Brown
         title: const Text(
           'Making - Scent Details',
           style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
         actions: [
           StreamBuilder<DateTime>(
@@ -148,7 +148,7 @@ class _MakingScreen5State extends State<MakingScreen5> {
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
               final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a');
+              final timeFormatter = DateFormat('h:mm a'); // 12-hour format
               final formattedDate = dateFormatter.format(now);
               final formattedTime = timeFormatter.format(now);
 

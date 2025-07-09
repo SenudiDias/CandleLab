@@ -4,6 +4,8 @@ import 'making_screen.dart';
 import 'flame_day_screen.dart';
 import 'analysis_screen.dart';
 import 'login_screen.dart';
+import 'notifications_screen.dart';
+import '../services/notification_service.dart';
 
 class CustomDrawer extends StatelessWidget {
   final String currentRoute;
@@ -90,6 +92,28 @@ class CustomDrawer extends StatelessWidget {
                       );
                     },
                   ),
+                  // Notifications item with badge
+                  StreamBuilder<int>(
+                    stream: NotificationService.unreadCountStream,
+                    builder: (context, snapshot) {
+                      final unreadCount = snapshot.data ?? 0;
+                      return _buildNotificationItem(
+                        context,
+                        title: 'Notifications',
+                        route: '/notifications',
+                        isSelected: currentRoute == '/notifications',
+                        unreadCount: unreadCount,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationsScreen(),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -148,6 +172,64 @@ class CustomDrawer extends StatelessWidget {
           color: const Color(0xFF5D4037),
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
+      ),
+      tileColor: isSelected ? const Color(0xFF5D4037).withOpacity(0.1) : null,
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildNotificationItem(
+    BuildContext context, {
+    required String title,
+    required String route,
+    required bool isSelected,
+    required int unreadCount,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(
+        Icons.notifications,
+        color: const Color(0xFF5D4037),
+        size: 20.0,
+      ),
+      title: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16.0,
+              fontFamily: 'Georgia',
+              color: const Color(0xFF5D4037),
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          if (unreadCount > 0) ...[
+            const SizedBox(width: 8.0),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 6.0,
+                vertical: 2.0,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 20.0,
+                minHeight: 20.0,
+              ),
+              child: Text(
+                unreadCount > 99 ? '99+' : unreadCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ],
       ),
       tileColor: isSelected ? const Color(0xFF5D4037).withOpacity(0.1) : null,
       onTap: onTap,

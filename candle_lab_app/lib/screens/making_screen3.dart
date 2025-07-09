@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'custom_drawer.dart';
 import 'making_screen4.dart';
-import '../models/candle_data.dart'; // Import shared models
+import 'making_screen5.dart';
+import 'making_screen6.dart';
+import 'making_screen7.dart';
+import '../models/candle_data.dart';
 
 class MakingScreen3 extends StatefulWidget {
   final CandleData candleData;
@@ -276,12 +279,28 @@ class _MakingScreen3State extends State<MakingScreen3> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             _saveData();
+                            Widget nextScreen;
+                            if (widget.candleData.isWicked == true) {
+                              nextScreen = MakingScreen4(
+                                candleData: widget.candleData,
+                              );
+                            } else if (widget.candleData.isScented == true) {
+                              nextScreen = MakingScreen5(
+                                candleData: widget.candleData,
+                              );
+                            } else if (widget.candleData.isColoured == true) {
+                              nextScreen = MakingScreen6(
+                                candleData: widget.candleData,
+                              );
+                            } else {
+                              nextScreen = MakingScreen7(
+                                candleData: widget.candleData,
+                              );
+                            }
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => MakingScreen4(
-                                  candleData: widget.candleData,
-                                ),
+                                builder: (context) => nextScreen,
                               ),
                             );
                           }

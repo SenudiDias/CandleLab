@@ -27,11 +27,24 @@ class _MakingScreen2State extends State<MakingScreen2> {
     super.initState();
     _initializeWaxDetails();
     _initializeControllers();
+    _calculateValues();
   }
 
   void _initializeWaxDetails() {
     waxDetails = widget.candleData.waxTypes.map((waxType) {
-      return WaxDetail(waxType: waxType);
+      final existing = widget.candleData.waxDetails.firstWhere(
+        (d) => d.waxType == waxType,
+        orElse: () => WaxDetail(waxType: waxType),
+      );
+      return WaxDetail(
+        waxType: waxType,
+        product: existing.product,
+        supplier: existing.supplier,
+        weight: existing.weight,
+        percentage: existing.percentage,
+        costPerKg: existing.costPerKg,
+        cost: existing.cost,
+      );
     }).toList();
   }
 
@@ -42,19 +55,34 @@ class _MakingScreen2State extends State<MakingScreen2> {
     costPerKgControllers = {};
 
     for (String waxType in widget.candleData.waxTypes) {
-      productControllers[waxType] = TextEditingController();
-      supplierControllers[waxType] = TextEditingController();
-      weightControllers[waxType] = TextEditingController();
-      costPerKgControllers[waxType] = TextEditingController();
+      final detail = waxDetails.firstWhere((d) => d.waxType == waxType);
+      productControllers[waxType] = TextEditingController(text: detail.product);
+      supplierControllers[waxType] = TextEditingController(
+        text: detail.supplier,
+      );
+      weightControllers[waxType] = TextEditingController(
+        text: detail.weight.toString(),
+      );
+      costPerKgControllers[waxType] = TextEditingController(
+        text: detail.costPerKg.toString(),
+      );
     }
   }
 
   @override
   void dispose() {
-    productControllers.values.forEach((controller) => controller.dispose());
-    supplierControllers.values.forEach((controller) => controller.dispose());
-    weightControllers.values.forEach((controller) => controller.dispose());
-    costPerKgControllers.values.forEach((controller) => controller.dispose());
+    for (var controller in productControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in supplierControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in weightControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in costPerKgControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -518,7 +546,7 @@ class _MakingScreen2State extends State<MakingScreen2> {
                               ),
                             ),
                             Text(
-                              '${detail.cost.toStringAsFixed(2)}',
+                              detail.cost.toStringAsFixed(2),
                               style: const TextStyle(
                                 fontSize: 16.0,
                                 fontWeight: FontWeight.bold,

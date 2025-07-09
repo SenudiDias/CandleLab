@@ -2,59 +2,79 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'custom_drawer.dart';
-import 'making_screen5.dart';
-import 'making_screen6.dart';
 import 'making_screen7.dart';
 import '../models/candle_data.dart';
 
-class MakingScreen4 extends StatefulWidget {
+class MakingScreen6 extends StatefulWidget {
   final CandleData candleData;
 
-  const MakingScreen4({super.key, required this.candleData});
+  const MakingScreen6({super.key, required this.candleData});
 
   @override
-  State<MakingScreen4> createState() => _MakingScreen4State();
+  State<MakingScreen6> createState() => _MakingScreen6State();
 }
 
-class _MakingScreen4State extends State<MakingScreen4> {
+class _MakingScreen6State extends State<MakingScreen6> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _numberOfWicksController =
-      TextEditingController();
-  final TextEditingController _wickCostController = TextEditingController();
-  final TextEditingController _stickerCostController = TextEditingController();
-  final TextEditingController _wickTypeController = TextEditingController();
+  final TextEditingController _colourController = TextEditingController();
+  final TextEditingController _supplierController = TextEditingController();
+  final TextEditingController _weightController = TextEditingController();
+  final TextEditingController _costController = TextEditingController();
+  final TextEditingController _percentageController = TextEditingController();
+  double _percentage = 0.0;
 
   @override
   void initState() {
     super.initState();
     _initializeData();
+    _updatePercentage();
+    _weightController.addListener(_updatePercentage);
   }
 
   void _initializeData() {
-    if (widget.candleData.wickDetail != null) {
-      final wick = widget.candleData.wickDetail!;
-      _numberOfWicksController.text = wick.numberOfWicks.toString();
-      _wickTypeController.text = wick.wickType;
-      _wickCostController.text = wick.wickCost.toString();
-      _stickerCostController.text = wick.stickerCost.toString();
+    if (widget.candleData.colourDetail != null) {
+      final colour = widget.candleData.colourDetail!;
+      _colourController.text = colour.colour;
+      _supplierController.text = colour.supplier;
+      _weightController.text = colour.weight.toString();
+      _costController.text = colour.cost.toString();
+      _percentage = colour.percentage;
     }
+  }
+
+  void _updatePercentage() {
+    setState(() {
+      double colourWeight = double.tryParse(_weightController.text) ?? 0.0;
+      double totalWaxWeight = widget.candleData.waxDetails.fold(
+        0.0,
+        (sum, detail) => sum + detail.weight,
+      );
+      _percentage = totalWaxWeight > 0
+          ? (colourWeight / totalWaxWeight) * 100
+          : 0.0;
+
+      _percentageController.text = _percentage.toStringAsFixed(2);
+    });
   }
 
   @override
   void dispose() {
-    _numberOfWicksController.dispose();
-    _wickCostController.dispose();
-    _stickerCostController.dispose();
-    _wickTypeController.dispose();
+    _colourController.dispose();
+    _supplierController.dispose();
+    _weightController.removeListener(_updatePercentage);
+    _weightController.dispose();
+    _costController.dispose();
+    _percentageController.dispose();
     super.dispose();
   }
 
   void _saveData() {
-    widget.candleData.wickDetail = WickDetail(
-      numberOfWicks: int.tryParse(_numberOfWicksController.text) ?? 0,
-      wickType: _wickTypeController.text,
-      wickCost: double.tryParse(_wickCostController.text) ?? 0.0,
-      stickerCost: double.tryParse(_stickerCostController.text) ?? 0.0,
+    widget.candleData.colourDetail = ColourDetail(
+      colour: _colourController.text,
+      supplier: _supplierController.text,
+      weight: double.tryParse(_weightController.text) ?? 0.0,
+      percentage: _percentage,
+      cost: double.tryParse(_costController.text) ?? 0.0,
     );
   }
 
@@ -72,7 +92,7 @@ class _MakingScreen4State extends State<MakingScreen4> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF795548),
         title: const Text(
-          'Making - Wick Details',
+          'Making - Colour Details',
           style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
         ),
         leading: IconButton(
@@ -162,7 +182,7 @@ class _MakingScreen4State extends State<MakingScreen4> {
                 ),
                 const SizedBox(height: 20.0),
                 const Text(
-                  'Wick Details',
+                  'Colour Details',
                   style: TextStyle(
                     fontSize: 20.0,
                     fontWeight: FontWeight.bold,
@@ -178,24 +198,16 @@ class _MakingScreen4State extends State<MakingScreen4> {
                     child: Column(
                       children: [
                         TextFormField(
-                          controller: _numberOfWicksController,
+                          controller: _colourController,
                           decoration: const InputDecoration(
-                            labelText: 'Number of Wicks',
+                            labelText: 'Colour',
                             border: OutlineInputBorder(),
                             filled: true,
                             fillColor: Colors.white,
                           ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Required';
-                            }
-                            if (int.tryParse(value) == null ||
-                                int.parse(value) <= 0) {
-                              return 'Invalid number';
+                              return 'Colour is required';
                             }
                             return null;
                           },
@@ -207,16 +219,16 @@ class _MakingScreen4State extends State<MakingScreen4> {
                         ),
                         const SizedBox(height: 16.0),
                         TextFormField(
-                          controller: _wickTypeController,
+                          controller: _supplierController,
                           decoration: const InputDecoration(
-                            labelText: 'Wick Type',
+                            labelText: 'Supplier',
                             border: OutlineInputBorder(),
                             filled: true,
                             fillColor: Colors.white,
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Wick type is required';
+                              return 'Supplier is required';
                             }
                             return null;
                           },
@@ -231,9 +243,9 @@ class _MakingScreen4State extends State<MakingScreen4> {
                           children: [
                             Expanded(
                               child: TextFormField(
-                                controller: _wickCostController,
+                                controller: _weightController,
                                 decoration: const InputDecoration(
-                                  labelText: 'Cost of Wick (\$)',
+                                  labelText: 'Weight (g)',
                                   border: OutlineInputBorder(),
                                   filled: true,
                                   fillColor: Colors.white,
@@ -249,8 +261,8 @@ class _MakingScreen4State extends State<MakingScreen4> {
                                     return 'Required';
                                   }
                                   if (double.tryParse(value) == null ||
-                                      double.parse(value) < 0) {
-                                    return 'Invalid cost';
+                                      double.parse(value) <= 0) {
+                                    return 'Invalid weight';
                                   }
                                   return null;
                                 },
@@ -264,29 +276,14 @@ class _MakingScreen4State extends State<MakingScreen4> {
                             const SizedBox(width: 12.0),
                             Expanded(
                               child: TextFormField(
-                                controller: _stickerCostController,
+                                controller: _percentageController,
+                                readOnly: true,
                                 decoration: const InputDecoration(
-                                  labelText: 'Cost of Sticker (\$)',
+                                  labelText: 'Percentage (%)',
                                   border: OutlineInputBorder(),
                                   filled: true,
-                                  fillColor: Colors.white,
+                                  fillColor: Color(0xFFE0E0E0),
                                 ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}'),
-                                  ),
-                                ],
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Required';
-                                  }
-                                  if (double.tryParse(value) == null ||
-                                      double.parse(value) < 0) {
-                                    return 'Invalid cost';
-                                  }
-                                  return null;
-                                },
                                 style: const TextStyle(
                                   fontSize: 14.0,
                                   fontFamily: 'Georgia',
@@ -295,6 +292,37 @@ class _MakingScreen4State extends State<MakingScreen4> {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 16.0),
+                        TextFormField(
+                          controller: _costController,
+                          decoration: const InputDecoration(
+                            labelText: 'Cost (\$)',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\d+\.?\d{0,2}'),
+                            ),
+                          ],
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Required';
+                            }
+                            if (double.tryParse(value) == null ||
+                                double.parse(value) < 0) {
+                              return 'Invalid cost';
+                            }
+                            return null;
+                          },
+                          style: const TextStyle(
+                            fontSize: 14.0,
+                            fontFamily: 'Georgia',
+                            color: Color(0xFF5D4037),
+                          ),
                         ),
                       ],
                     ),
@@ -331,24 +359,12 @@ class _MakingScreen4State extends State<MakingScreen4> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             _saveData();
-                            Widget nextScreen;
-                            if (widget.candleData.isScented == true) {
-                              nextScreen = MakingScreen5(
-                                candleData: widget.candleData,
-                              );
-                            } else if (widget.candleData.isColoured == true) {
-                              nextScreen = MakingScreen6(
-                                candleData: widget.candleData,
-                              );
-                            } else {
-                              nextScreen = MakingScreen7(
-                                candleData: widget.candleData,
-                              );
-                            }
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => nextScreen,
+                                builder: (context) => MakingScreen7(
+                                  candleData: widget.candleData,
+                                ),
                               ),
                             );
                           }

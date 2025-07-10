@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'custom_drawer.dart';
 import 'making_screen9.dart';
 import '../models/candle_data.dart';
+import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 
 class MakingScreen8 extends StatefulWidget {
@@ -97,7 +98,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
     });
   }
 
-  void _saveData() {
+  Future<void> _saveData() async {
     final curingDays = int.tryParse(_curingController.text) ?? 0;
     final coolDownTime = double.tryParse(_coolDownController.text) ?? 0.0;
 
@@ -109,24 +110,40 @@ class _MakingScreen8State extends State<MakingScreen8> {
       photoPaths: _photoPaths,
     );
 
-    // Schedule notification if reminder time is set
-    if (_calculatedBurningDay != null && _selectedReminderTime != null) {
-      final reminderDateTime = DateTime(
-        _calculatedBurningDay!.year,
-        _calculatedBurningDay!.month,
-        _calculatedBurningDay!.day,
-        _selectedReminderTime!.hour,
-        _selectedReminderTime!.minute,
-      );
+    try {
+      // Save CandleData to Firestore
+      final firestoreService = FirestoreService();
+      await firestoreService.saveCandleData(widget.candleData);
 
-      NotificationService.scheduleNotification(
-        id: DateTime.now().millisecondsSinceEpoch,
-        title: 'Curing Complete!',
-        body:
-            'Your candle "${widget.candleData.sampleName}" is ready for burning.',
-        scheduledDate: reminderDateTime,
-        candleName: widget.candleData.sampleName ?? 'Unknown Candle',
+      // Schedule in-app notification if reminder is set
+      if (_calculatedBurningDay != null && _selectedReminderTime != null) {
+        final reminderDateTime = DateTime(
+          _calculatedBurningDay!.year,
+          _calculatedBurningDay!.month,
+          _calculatedBurningDay!.day,
+          _selectedReminderTime!.hour,
+          _selectedReminderTime!.minute,
+        );
+
+        await NotificationService.scheduleNotification(
+          id: widget.candleData.sampleName.hashCode,
+          title: 'Curing Complete!',
+          body:
+              'Your candle "${widget.candleData.sampleName}" is ready for burning.',
+          scheduledDate: reminderDateTime,
+          candleName: widget.candleData.sampleName ?? 'Unknown Candle',
+        );
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Candle data and notification saved successfully'),
+        ),
       );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error saving data: $e')));
     }
   }
 
@@ -156,9 +173,44 @@ class _MakingScreen8State extends State<MakingScreen8> {
           style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
         ),
         leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+          builder: (context) => StreamBuilder<int>(
+            stream: NotificationService.unreadCountStream,
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.menu, color: Colors.white),
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ),
         actions: [
@@ -453,9 +505,9 @@ class _MakingScreen8State extends State<MakingScreen8> {
                     const SizedBox(width: 16.0),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (_formKey.currentState!.validate()) {
-                            _saveData();
+                            await _saveData();
                             Navigator.push(
                               context,
                               MaterialPageRoute(

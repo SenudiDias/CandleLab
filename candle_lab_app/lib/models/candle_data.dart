@@ -315,6 +315,7 @@ class CoolingCuringDetail {
 }
 
 class CandleData {
+  String? id;
   String? sampleName;
   String? candleType;
   List<String> waxTypes;
@@ -330,9 +331,11 @@ class CandleData {
   ColourDetail? colourDetail;
   TemperatureDetail? temperatureDetail;
   CoolingCuringDetail? coolingCuringDetail;
+  DateTime? createdAt;
   static List<String> availableScentTypes = ['Seasalt', 'Driftwood'];
 
   CandleData({
+    this.id,
     this.sampleName,
     this.candleType,
     List<String>? waxTypes,
@@ -348,6 +351,7 @@ class CandleData {
     this.colourDetail,
     this.temperatureDetail,
     this.coolingCuringDetail,
+    this.createdAt,
   }) : waxTypes = waxTypes != null
            ? List<String>.from(waxTypes)
            : List<String>.empty(growable: true),
@@ -356,6 +360,7 @@ class CandleData {
            : List<WaxDetail>.empty(growable: true);
 
   Map<String, dynamic> toJson() => {
+    'id': id,
     'sampleName': sampleName,
     'candleType': candleType,
     'waxTypes': waxTypes,
@@ -371,10 +376,12 @@ class CandleData {
     'colourDetail': colourDetail?.toJson(),
     'temperatureDetail': temperatureDetail?.toJson(),
     'coolingCuringDetail': coolingCuringDetail?.toJson(),
+    'createdAt': createdAt?.toIso8601String(),
     // 'createdAt': FieldValue.serverTimestamp(),
   };
 
   factory CandleData.fromJson(Map<String, dynamic> json) => CandleData(
+    id: json['id'],
     sampleName: json['sampleName'],
     candleType: json['candleType'],
     waxTypes: List<String>.from(json['waxTypes'] ?? []),
@@ -409,6 +416,9 @@ class CandleData {
         : null,
     coolingCuringDetail: json['coolingCuringDetail'] != null
         ? CoolingCuringDetail.fromJson(json['coolingCuringDetail'])
+        : null,
+    createdAt: json['createdAt'] != null
+        ? DateTime.parse(json['createdAt'])
         : null,
   );
 }

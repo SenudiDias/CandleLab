@@ -107,10 +107,14 @@ class _MakingScreen5State extends State<MakingScreen5> {
   void _deleteScentType(String scentType) {
     if (CandleData.availableScentTypes.length > 1) {
       setState(() {
-        CandleData.availableScentTypes.remove(scentType);
         if (_scentType == scentType) {
-          _scentType = CandleData.availableScentTypes.first;
+          // Set to a new default before removing
+          final newList = CandleData.availableScentTypes
+              .where((e) => e != scentType)
+              .toList();
+          _scentType = newList.first;
         }
+        CandleData.availableScentTypes.remove(scentType);
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -240,6 +244,9 @@ class _MakingScreen5State extends State<MakingScreen5> {
                       children: [
                         // Dropdown on its own row
                         DropdownButtonFormField<String>(
+                          key: ValueKey(
+                            CandleData.availableScentTypes.join(),
+                          ), // <--- force rebuild
                           value: _scentType,
                           decoration: const InputDecoration(
                             labelText: 'Scent Type',
@@ -267,7 +274,9 @@ class _MakingScreen5State extends State<MakingScreen5> {
                                   if (value != _scentType)
                                     IconButton(
                                       icon: const Icon(Icons.delete, size: 20),
-                                      onPressed: () => _deleteScentType(value),
+                                      onPressed: () {
+                                        _deleteScentType(value);
+                                      },
                                     ),
                                 ],
                               ),

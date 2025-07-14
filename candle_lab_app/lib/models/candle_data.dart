@@ -409,6 +409,29 @@ class CandleData {
     return numberOfCandles > 0 ? total / numberOfCandles : total;
   }
 
+  // Reset all fields to initial state
+  void reset() {
+    id = null;
+    userId = null;
+    sampleName = null;
+    candleType = null;
+    waxTypes.clear();
+    isWicked = null;
+    isScented = false;
+    isColoured = false;
+    waxDetails.clear();
+    containerDetail = null;
+    pillarDetail = null;
+    mouldDetail = null;
+    wickDetail = null;
+    scentDetail = null;
+    colourDetail = null;
+    temperatureDetail = null;
+    coolingCuringDetail = null;
+    createdAt = null;
+    totalCost = null;
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'userId': userId,

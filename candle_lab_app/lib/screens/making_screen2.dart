@@ -61,10 +61,10 @@ class _MakingScreen2State extends State<MakingScreen2> {
         text: detail.supplier,
       );
       weightControllers[waxType] = TextEditingController(
-        text: detail.weight.toString(),
+        text: detail.weight == 0.0 ? '' : detail.weight.toString(),
       );
       costPerKgControllers[waxType] = TextEditingController(
-        text: detail.costPerKg.toString(),
+        text: detail.costPerKg == 0.0 ? '' : detail.costPerKg.toString(),
       );
     }
   }
@@ -421,6 +421,7 @@ class _MakingScreen2State extends State<MakingScreen2> {
                         controller: weightControllers[detail.waxType],
                         decoration: const InputDecoration(
                           labelText: 'Weight (g)',
+                          hintText: '0.0',
                           border: OutlineInputBorder(),
                           filled: true,
                           fillColor: Colors.white,
@@ -456,6 +457,7 @@ class _MakingScreen2State extends State<MakingScreen2> {
                         controller: costPerKgControllers[detail.waxType],
                         decoration: const InputDecoration(
                           labelText: 'Cost per 1 kg',
+                          hintText: '0.0',
                           border: OutlineInputBorder(),
                           filled: true,
                           fillColor: Colors.white,

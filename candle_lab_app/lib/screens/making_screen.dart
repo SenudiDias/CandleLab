@@ -68,6 +68,81 @@ class _MakingScreenState extends State<MakingScreen> {
     });
   }
 
+  // Method to clear all data with confirmation
+  Future<void> _clearAllData() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Clear All Data',
+            style: TextStyle(fontFamily: 'Georgia', color: Color(0xFF5D4037)),
+          ),
+          content: const Text(
+            'Are you sure you want to clear all entered data? This action cannot be undone.',
+            style: TextStyle(fontFamily: 'Georgia', color: Color(0xFF5D4037)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontFamily: 'Georgia',
+                  color: Color(0xFF795548),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                setState(() {
+                  // Reset CandleData
+                  _candleData.reset();
+                  // Reset controllers
+                  _sampleNameController.clear();
+                  _newWaxTypeController.clear();
+                  // Reset wax types selection
+                  _candleData.waxTypes.clear();
+                  // Reset other fields
+                  _candleData.candleType = null;
+                  _candleData.isWicked = null;
+                  _candleData.isScented = false;
+                  _candleData.isColoured = false;
+                  _candleData.waxDetails.clear();
+                  _candleData.containerDetail = null;
+                  _candleData.pillarDetail = null;
+                  _candleData.mouldDetail = null;
+                  _candleData.wickDetail = null;
+                  _candleData.scentDetail = null;
+                  _candleData.colourDetail = null;
+                  _candleData.temperatureDetail = null;
+                  _candleData.coolingCuringDetail = null;
+                  _candleData.createdAt = null;
+                  _candleData.totalCost = null;
+                  // Reinitialize userId
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user != null) {
+                    _candleData.userId = user.uid;
+                  }
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('All data has been cleared.')),
+                );
+              },
+              child: const Text(
+                'Clear',
+                style: TextStyle(fontFamily: 'Georgia', color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Check if user is authenticated
@@ -551,51 +626,83 @@ class _MakingScreenState extends State<MakingScreen> {
                 ),
                 const SizedBox(height: 20.0),
                 // Next Button
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate() &&
-                          _candleData.waxTypes.isNotEmpty &&
-                          (_candleData.isWicked != null ||
-                              _candleData.candleType == 'Container' ||
-                              _candleData.candleType == 'Pillar') &&
-                          _candleData.sampleName != null &&
-                          _candleData.sampleName!.isNotEmpty) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                MakingScreen2(candleData: _candleData),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Clear Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _clearAllData,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red, // Red button
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 40.0,
+                            vertical: 16.0,
                           ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please complete all fields'),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0),
                           ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF795548),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40.0,
-                        vertical: 16.0,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                      ),
-                      minimumSize: const Size.fromHeight(50.0),
-                    ),
-                    child: const Text(
-                      'Next',
-                      style: TextStyle(
-                        fontSize: 20.0,
-                        color: Colors.white,
-                        fontFamily: 'Georgia',
+                          minimumSize: const Size.fromHeight(50.0),
+                        ),
+                        child: const Text(
+                          'Clear',
+                          style: TextStyle(
+                            fontSize: 20.0,
+                            color: Colors.white,
+                            fontFamily: 'Georgia',
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 16.0), // Space between buttons
+                    // Next Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate() &&
+                              _candleData.waxTypes.isNotEmpty &&
+                              (_candleData.isWicked != null ||
+                                  _candleData.candleType == 'Container' ||
+                                  _candleData.candleType == 'Pillar') &&
+                              _candleData.sampleName != null &&
+                              _candleData.sampleName!.isNotEmpty) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    MakingScreen2(candleData: _candleData),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please complete all fields'),
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF795548), // Brown
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 40.0,
+                            vertical: 16.0,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                          ),
+                          minimumSize: const Size.fromHeight(50.0),
+                        ),
+                        child: const Text(
+                          'Next',
+                          style: TextStyle(
+                            fontSize: 20.0,
+                            color: Colors.white,
+                            fontFamily: 'Georgia',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

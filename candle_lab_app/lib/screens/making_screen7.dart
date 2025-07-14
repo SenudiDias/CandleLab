@@ -26,6 +26,7 @@ class _MakingScreen7State extends State<MakingScreen7> {
   final TextEditingController _pouringFController = TextEditingController();
   final TextEditingController _ambientTempCController = TextEditingController();
   final TextEditingController _ambientTempFController = TextEditingController();
+
   final FocusNode _maxHeatedCFocus = FocusNode();
   final FocusNode _maxHeatedFFocus = FocusNode();
   final FocusNode _fragranceMixingCFocus = FocusNode();
@@ -34,7 +35,9 @@ class _MakingScreen7State extends State<MakingScreen7> {
   final FocusNode _pouringFFocus = FocusNode();
   final FocusNode _ambientTempCFocus = FocusNode();
   final FocusNode _ambientTempFFocus = FocusNode();
+
   List<String> _photoPaths = [];
+  bool _isUpdating = false;
 
   @override
   void initState() {
@@ -58,104 +61,161 @@ class _MakingScreen7State extends State<MakingScreen7> {
       _pouringFController.text = temp.pouringF.toStringAsFixed(2);
       _ambientTempCController.text = temp.ambientTempC.toStringAsFixed(2);
       _ambientTempFController.text = temp.ambientTempF.toStringAsFixed(2);
-
       _photoPaths = List.from(temp.photoPaths);
     }
   }
 
   void _addTemperatureListeners() {
-    _maxHeatedCFocus.addListener(
-      () => _handleFocusChange(
-        _maxHeatedCFocus,
+    // Add text change listeners for real-time conversion
+    _maxHeatedCController.addListener(
+      () => _convertTemperature(
         _maxHeatedCController,
         _maxHeatedFController,
         toFahrenheit: true,
       ),
     );
-    _maxHeatedFFocus.addListener(
-      () => _handleFocusChange(
-        _maxHeatedFFocus,
+
+    _maxHeatedFController.addListener(
+      () => _convertTemperature(
         _maxHeatedFController,
         _maxHeatedCController,
         toFahrenheit: false,
       ),
     );
+
+    _fragranceMixingCController.addListener(
+      () => _convertTemperature(
+        _fragranceMixingCController,
+        _fragranceMixingFController,
+        toFahrenheit: true,
+      ),
+    );
+
+    _fragranceMixingFController.addListener(
+      () => _convertTemperature(
+        _fragranceMixingFController,
+        _fragranceMixingCController,
+        toFahrenheit: false,
+      ),
+    );
+
+    _pouringCController.addListener(
+      () => _convertTemperature(
+        _pouringCController,
+        _pouringFController,
+        toFahrenheit: true,
+      ),
+    );
+
+    _pouringFController.addListener(
+      () => _convertTemperature(
+        _pouringFController,
+        _pouringCController,
+        toFahrenheit: false,
+      ),
+    );
+
+    _ambientTempCController.addListener(
+      () => _convertTemperature(
+        _ambientTempCController,
+        _ambientTempFController,
+        toFahrenheit: true,
+      ),
+    );
+
+    _ambientTempFController.addListener(
+      () => _convertTemperature(
+        _ambientTempFController,
+        _ambientTempCController,
+        toFahrenheit: false,
+      ),
+    );
+
+    // Keep focus listeners for formatting when field loses focus
+    _maxHeatedCFocus.addListener(
+      () => _handleFocusChange(_maxHeatedCFocus, _maxHeatedCController),
+    );
+
+    _maxHeatedFFocus.addListener(
+      () => _handleFocusChange(_maxHeatedFFocus, _maxHeatedFController),
+    );
+
     _fragranceMixingCFocus.addListener(
       () => _handleFocusChange(
         _fragranceMixingCFocus,
         _fragranceMixingCController,
-        _fragranceMixingFController,
-        toFahrenheit: true,
       ),
     );
+
     _fragranceMixingFFocus.addListener(
       () => _handleFocusChange(
         _fragranceMixingFFocus,
         _fragranceMixingFController,
-        _fragranceMixingCController,
-        toFahrenheit: false,
       ),
     );
+
     _pouringCFocus.addListener(
-      () => _handleFocusChange(
-        _pouringCFocus,
-        _pouringCController,
-        _pouringFController,
-        toFahrenheit: true,
-      ),
+      () => _handleFocusChange(_pouringCFocus, _pouringCController),
     );
+
     _pouringFFocus.addListener(
-      () => _handleFocusChange(
-        _pouringFFocus,
-        _pouringFController,
-        _pouringCController,
-        toFahrenheit: false,
-      ),
+      () => _handleFocusChange(_pouringFFocus, _pouringFController),
     );
+
     _ambientTempCFocus.addListener(
-      () => _handleFocusChange(
-        _ambientTempCFocus,
-        _ambientTempCController,
-        _ambientTempFController,
-        toFahrenheit: true,
-      ),
+      () => _handleFocusChange(_ambientTempCFocus, _ambientTempCController),
     );
+
     _ambientTempFFocus.addListener(
-      () => _handleFocusChange(
-        _ambientTempFFocus,
-        _ambientTempFController,
-        _ambientTempCController,
-        toFahrenheit: false,
-      ),
+      () => _handleFocusChange(_ambientTempFFocus, _ambientTempFController),
     );
   }
 
-  void _handleFocusChange(
-    FocusNode focusNode,
+  void _convertTemperature(
     TextEditingController source,
     TextEditingController target, {
     required bool toFahrenheit,
   }) {
+    // Prevent infinite loop during updates
+    if (_isUpdating) return;
+
+    final value = double.tryParse(source.text);
+    if (value != null && source.text.isNotEmpty) {
+      _isUpdating = true;
+
+      String convertedValue;
+      if (toFahrenheit) {
+        convertedValue = (value * 9 / 5 + 32).toStringAsFixed(2);
+      } else {
+        convertedValue = ((value - 32) * 5 / 9).toStringAsFixed(2);
+      }
+
+      target.text = convertedValue;
+      _isUpdating = false;
+    } else if (source.text.isEmpty) {
+      _isUpdating = true;
+      target.text = '';
+      _isUpdating = false;
+    }
+  }
+
+  void _handleFocusChange(
+    FocusNode focusNode,
+    TextEditingController controller,
+  ) {
     if (!focusNode.hasFocus) {
-      final value = double.tryParse(source.text);
+      final value = double.tryParse(controller.text);
       if (value != null) {
         setState(() {
-          source.text = value.toStringAsFixed(2); // <-- Format the source field
-          if (toFahrenheit) {
-            target.text = (value * 9 / 5 + 32).toStringAsFixed(2);
-          } else {
-            target.text = ((value - 32) * 5 / 9).toStringAsFixed(2);
-          }
+          controller.text = value.toStringAsFixed(2);
         });
-      } else {
-        target.text = '';
       }
     }
   }
 
   void _addPhoto() {
     setState(() {
-      _photoPaths.add('photo_${_photoPaths.length + 1}.jpg');
+      _photoPaths.add('photo${_photoPaths.length + 1}.jpg');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Photo added (simulated)')));
@@ -267,7 +327,6 @@ class _MakingScreen7State extends State<MakingScreen7> {
           ),
         ],
       ),
-
       drawer: const CustomDrawer(currentRoute: '/making'),
       body: SafeArea(
         child: SingleChildScrollView(

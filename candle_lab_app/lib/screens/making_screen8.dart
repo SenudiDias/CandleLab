@@ -110,6 +110,9 @@ class _MakingScreen8State extends State<MakingScreen8> {
       photoPaths: _photoPaths,
     );
 
+    // Calculate and set total cost
+    widget.candleData.totalCost = widget.candleData.calculateTotalCost();
+
     try {
       // Save CandleData to Firestore
       final firestoreService = FirestoreService();

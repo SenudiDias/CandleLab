@@ -332,6 +332,7 @@ class CandleData {
   TemperatureDetail? temperatureDetail;
   CoolingCuringDetail? coolingCuringDetail;
   DateTime? createdAt;
+  double? totalCost; // Added total cost field
   static List<String> availableScentTypes = ['Seasalt', 'Driftwood'];
 
   CandleData({
@@ -352,12 +353,61 @@ class CandleData {
     this.temperatureDetail,
     this.coolingCuringDetail,
     this.createdAt,
+    this.totalCost,
   }) : waxTypes = waxTypes != null
            ? List<String>.from(waxTypes)
            : List<String>.empty(growable: true),
        waxDetails = waxDetails != null
            ? List<WaxDetail>.from(waxDetails)
            : List<WaxDetail>.empty(growable: true);
+
+  // Calculate total cost per candle
+  double calculateTotalCost() {
+    double total = 0.0;
+    int numberOfCandles = 1;
+
+    // Determine number of candles based on candle type
+    if (candleType == 'Container' && containerDetail != null) {
+      numberOfCandles = containerDetail!.numberOfContainers;
+    } else if (candleType == 'Pillar' && pillarDetail != null) {
+      numberOfCandles = pillarDetail!.numberOfPillars;
+    } else if (candleType == 'Mould' && mouldDetail != null) {
+      numberOfCandles = mouldDetail!.number;
+    }
+
+    if (numberOfCandles == 0) numberOfCandles = 1; // Avoid division by zero
+
+    // Add Wax cost
+    for (var wax in waxDetails) {
+      total += wax.cost;
+    }
+
+    // Add Container cost
+    if (candleType == 'Container' && containerDetail != null) {
+      total += containerDetail!.cost;
+    }
+
+    // Add Wick and Wick Sticker costs
+    if ((isWicked == true ||
+            candleType == 'Container' ||
+            candleType == 'Pillar') &&
+        wickDetail != null) {
+      total += wickDetail!.wickCost + wickDetail!.stickerCost;
+    }
+
+    // Add Scent cost
+    if (isScented && scentDetail != null) {
+      total += scentDetail!.cost;
+    }
+
+    // Add Colour cost
+    if (isColoured && colourDetail != null) {
+      total += colourDetail!.cost;
+    }
+
+    // Calculate cost per candle
+    return numberOfCandles > 0 ? total / numberOfCandles : total;
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -377,7 +427,7 @@ class CandleData {
     'temperatureDetail': temperatureDetail?.toJson(),
     'coolingCuringDetail': coolingCuringDetail?.toJson(),
     'createdAt': createdAt?.toIso8601String(),
-    // 'createdAt': FieldValue.serverTimestamp(),
+    'totalCost': totalCost,
   };
 
   factory CandleData.fromJson(Map<String, dynamic> json) => CandleData(
@@ -420,5 +470,6 @@ class CandleData {
     createdAt: json['createdAt'] != null
         ? DateTime.parse(json['createdAt'])
         : null,
+    totalCost: json['totalCost']?.toDouble(),
   );
 }

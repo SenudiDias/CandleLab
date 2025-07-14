@@ -1,5 +1,3 @@
-// lib/models/candle_data.dart
-// import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class WaxDetail {
@@ -316,6 +314,7 @@ class CoolingCuringDetail {
 
 class CandleData {
   String? id;
+  String? userId; // Added userId field
   String? sampleName;
   String? candleType;
   List<String> waxTypes;
@@ -332,11 +331,12 @@ class CandleData {
   TemperatureDetail? temperatureDetail;
   CoolingCuringDetail? coolingCuringDetail;
   DateTime? createdAt;
-  double? totalCost; // Added total cost field
+  double? totalCost;
   static List<String> availableScentTypes = ['Seasalt', 'Driftwood'];
 
   CandleData({
     this.id,
+    this.userId,
     this.sampleName,
     this.candleType,
     List<String>? waxTypes,
@@ -411,6 +411,7 @@ class CandleData {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'userId': userId,
     'sampleName': sampleName,
     'candleType': candleType,
     'waxTypes': waxTypes,
@@ -432,6 +433,7 @@ class CandleData {
 
   factory CandleData.fromJson(Map<String, dynamic> json) => CandleData(
     id: json['id'],
+    userId: json['userId'],
     sampleName: json['sampleName'],
     candleType: json['candleType'],
     waxTypes: List<String>.from(json['waxTypes'] ?? []),

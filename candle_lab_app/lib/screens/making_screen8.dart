@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'custom_drawer.dart';
 import 'making_screen9.dart';
 import '../models/candle_data.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
+import 'login_screen.dart';
 
 class MakingScreen8 extends StatefulWidget {
   final CandleData candleData;
@@ -21,6 +23,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
   final TextEditingController _coolDownController = TextEditingController();
   final TextEditingController _curingController = TextEditingController();
   final TextEditingController _burningDayController = TextEditingController();
+  bool _isSaving = false; // Add flag to prevent multiple saves
 
   TimeOfDay? _selectedReminderTime;
   List<String> _photoPaths = [];
@@ -99,6 +102,22 @@ class _MakingScreen8State extends State<MakingScreen8> {
   }
 
   Future<void> _saveData() async {
+    if (_isSaving) return; // Prevent multiple saves
+    setState(() => _isSaving = true);
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => _isSaving = false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to save data')),
+      );
+      return;
+    }
+
     final curingDays = int.tryParse(_curingController.text) ?? 0;
     final coolDownTime = double.tryParse(_coolDownController.text) ?? 0.0;
 
@@ -129,7 +148,9 @@ class _MakingScreen8State extends State<MakingScreen8> {
         );
 
         await NotificationService.scheduleNotification(
-          id: widget.candleData.sampleName.hashCode,
+          id:
+              widget.candleData.id?.hashCode ??
+              widget.candleData.sampleName.hashCode,
           title: 'Curing Complete!',
           body:
               'Your candle "${widget.candleData.sampleName}" is ready for burning.',
@@ -147,6 +168,16 @@ class _MakingScreen8State extends State<MakingScreen8> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error saving data: $e')));
+    } finally {
+      setState(() => _isSaving = false);
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MakingScreen9(candleData: widget.candleData),
+          ),
+        );
+      }
     }
   }
 
@@ -508,34 +539,39 @@ class _MakingScreen8State extends State<MakingScreen8> {
                     const SizedBox(width: 16.0),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () async {
-                          if (_formKey.currentState!.validate()) {
-                            await _saveData();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MakingScreen9(
-                                  candleData: widget.candleData,
-                                ),
-                              ),
-                            );
-                          }
-                        },
+                        onPressed: _isSaving
+                            ? null
+                            : () async {
+                                if (_formKey.currentState!.validate()) {
+                                  await _saveData();
+                                }
+                              },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF795548),
+                          backgroundColor: _isSaving
+                              ? Colors.grey
+                              : const Color(0xFF795548),
                           padding: const EdgeInsets.symmetric(vertical: 16.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30.0),
                           ),
                         ),
-                        child: const Text(
-                          'Next',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.0,
+                                ),
+                              )
+                            : const Text(
+                                'Next',
+                                style: TextStyle(
+                                  fontSize: 18.0,
+                                  color: Colors.white,
+                                  fontFamily: 'Georgia',
+                                ),
+                              ),
                       ),
                     ),
                   ],

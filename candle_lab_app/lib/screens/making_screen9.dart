@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'custom_drawer.dart';
 import '../models/candle_data.dart';
 import '../services/notification_service.dart';
-import 'home_screen.dart'; // Adjust import based on your HomeScreen location
+import 'home_screen.dart';
+import 'login_screen.dart';
 
 class MakingScreen9 extends StatefulWidget {
   final CandleData candleData;
@@ -24,6 +26,16 @@ class _MakingScreen9State extends State<MakingScreen9> {
 
   @override
   Widget build(BuildContext context) {
+    if (FirebaseAuth.instance.currentUser == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(

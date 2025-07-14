@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:candle_lab_app/models/notification_data.dart';
 import 'firestore_service.dart';
 
@@ -17,7 +17,14 @@ class NotificationService {
     required DateTime scheduledDate,
     required String candleName,
   }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+
     final notification = NotificationData(
+      id: id.toString(),
+      userId: user.uid, // Set userId
       candleId: id.toString(),
       candleName: candleName,
       burningDay: scheduledDate,

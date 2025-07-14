@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'custom_drawer.dart';
 import 'making_screen2.dart';
 import '../models/candle_data.dart';
+import 'login_screen.dart';
 
 class MakingScreen extends StatefulWidget {
   const MakingScreen({super.key});
@@ -25,6 +27,16 @@ class _MakingScreenState extends State<MakingScreen> {
     while (true) {
       yield DateTime.now();
       await Future.delayed(const Duration(minutes: 1));
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Set userId when initializing CandleData
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _candleData.userId = user.uid;
     }
   }
 
@@ -52,14 +64,23 @@ class _MakingScreenState extends State<MakingScreen> {
   void _deleteWaxType(String waxType) {
     setState(() {
       availableWaxTypes.remove(waxType);
-      _candleData.waxTypes.remove(
-        waxType,
-      ); // Also remove from selected wax types
+      _candleData.waxTypes.remove(waxType);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Check if user is authenticated
+    if (FirebaseAuth.instance.currentUser == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5DC), // Beige background
       appBar: AppBar(
@@ -80,7 +101,7 @@ class _MakingScreenState extends State<MakingScreen> {
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
               final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a'); // 12-hour format
+              final timeFormatter = DateFormat('h:mm a');
               final formattedDate = dateFormatter.format(now);
               final formattedTime = timeFormatter.format(now);
 
@@ -207,7 +228,6 @@ class _MakingScreenState extends State<MakingScreen> {
                   ),
                 ),
                 const SizedBox(height: 10.0),
-
                 // Add new wax type section
                 Container(
                   padding: const EdgeInsets.all(12.0),
@@ -260,7 +280,6 @@ class _MakingScreenState extends State<MakingScreen> {
                   ),
                 ),
                 const SizedBox(height: 15.0),
-
                 // Wax types list with checkboxes and delete buttons
                 Container(
                   decoration: BoxDecoration(

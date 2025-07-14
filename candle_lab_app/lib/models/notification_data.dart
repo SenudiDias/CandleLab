@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NotificationData {
   String? id; // Firestore document ID
+  String? userId; // Added userId field
   String candleId; // Reference to the CandleData document
   String candleName; // Name of the candle (sampleName)
   DateTime burningDay; // When the candle is ready
@@ -10,6 +11,7 @@ class NotificationData {
 
   NotificationData({
     this.id,
+    this.userId,
     required this.candleId,
     required this.candleName,
     required this.burningDay,
@@ -19,6 +21,7 @@ class NotificationData {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'userId': userId,
     'candleId': candleId,
     'candleName': candleName,
     'burningDay': burningDay.toIso8601String(),
@@ -29,6 +32,7 @@ class NotificationData {
   factory NotificationData.fromJson(Map<String, dynamic> json) =>
       NotificationData(
         id: json['id'],
+        userId: json['userId'],
         candleId: json['candleId'],
         candleName: json['candleName'],
         burningDay: DateTime.parse(json['burningDay']),

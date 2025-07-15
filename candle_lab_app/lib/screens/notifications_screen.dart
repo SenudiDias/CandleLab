@@ -8,10 +8,10 @@ class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
+  State<NotificationsScreen> createState() => _MakingScreen8State();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _MakingScreen8State extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,8 +66,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       drawer: const CustomDrawer(currentRoute: '/notifications'),
       body: SafeArea(
-        child: FutureBuilder<List<NotificationData>>(
-          future: NotificationService.getNotifications(),
+        child: StreamBuilder<List<NotificationData>>(
+          stream: NotificationService.getNotifications(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -119,28 +119,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         color: Color(0xFF5D4037),
                       ),
                     ),
-                    trailing: isOverdue && !notification.isRead
-                        ? IconButton(
-                            icon: const Icon(
-                              Icons.check,
-                              color: Color(0xFF795548),
-                            ),
-                            onPressed: () async {
-                              await NotificationService.markAsRead(
-                                notification.id!,
-                              );
-                              setState(() {}); // Refresh the UI
-                            },
-                          )
-                        : null,
                     tileColor: notification.isRead
                         ? null
                         : const Color(0xFF5D4037).withOpacity(0.1),
                     onTap: () async {
-                      if (!notification.isRead) {
-                        await NotificationService.markAsRead(notification.id!);
-                        setState(() {}); // Refresh the UI
-                      }
+                      await _showNotificationDetails(context, notification);
                     },
                   ),
                 );
@@ -149,6 +132,87 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           },
         ),
       ),
+    );
+  }
+
+  Future<void> _showNotificationDetails(
+    BuildContext context,
+    NotificationData notification,
+  ) async {
+    final batchDate = notification.createdAt;
+    final batchTime = DateFormat('h:mm a').format(batchDate);
+    final burnDate = DateFormat(
+      'MMM d, yyyy, h:mm a',
+    ).format(notification.burningDay);
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Notification Details',
+            style: TextStyle(fontFamily: 'Georgia', color: Color(0xFF5D4037)),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Sample Name: ${notification.candleName}',
+                style: const TextStyle(
+                  fontFamily: 'Georgia',
+                  color: Color(0xFF5D4037),
+                ),
+              ),
+              Text(
+                'Candle Type: ${notification.candleType}',
+                style: const TextStyle(
+                  fontFamily: 'Georgia',
+                  color: Color(0xFF5D4037),
+                ),
+              ),
+              Text(
+                'Batch Date: ${DateFormat('MMM d, yyyy').format(batchDate)}',
+                style: const TextStyle(
+                  fontFamily: 'Georgia',
+                  color: Color(0xFF5D4037),
+                ),
+              ),
+              Text(
+                'Batch Time: $batchTime',
+                style: const TextStyle(
+                  fontFamily: 'Georgia',
+                  color: Color(0xFF5D4037),
+                ),
+              ),
+              Text(
+                'Burn Date: $burnDate',
+                style: const TextStyle(
+                  fontFamily: 'Georgia',
+                  color: Color(0xFF5D4037),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                if (!notification.isRead) {
+                  await NotificationService.markAsRead(notification.id!);
+                }
+              },
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  fontFamily: 'Georgia',
+                  color: Color(0xFF795548),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

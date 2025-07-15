@@ -16,6 +16,7 @@ class NotificationService {
     required String body,
     required DateTime scheduledDate,
     required String candleName,
+    required String candleType, // Already defined as a required parameter
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -24,11 +25,12 @@ class NotificationService {
 
     final notification = NotificationData(
       id: id.toString(),
-      userId: user.uid, // Set userId
+      userId: user.uid,
       candleId: id.toString(),
       candleName: candleName,
+      candleType: candleType, // Pass the candleType parameter
       burningDay: scheduledDate,
-      isRead: false,
+      isRead: true,
       createdAt: DateTime.now(),
     );
     await _firestoreService.saveNotification(notification);
@@ -39,8 +41,34 @@ class NotificationService {
     await _firestoreService.markNotificationAsRead(notificationId);
   }
 
-  // Retrieve all notifications
-  static Future<List<NotificationData>> getNotifications() async {
-    return await _firestoreService.getAllNotifications();
+  // Stream of all notifications with unread window logic
+  static Stream<List<NotificationData>> getNotifications() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return Stream.value([]);
+    }
+    return _firestoreService.getAllNotificationsStream().map((notifications) {
+      final now = DateTime.now();
+      for (var notification in notifications) {
+        final oneHourBefore = notification.burningDay.subtract(
+          const Duration(hours: 1),
+        );
+        final oneHourAfter = notification.burningDay.add(
+          const Duration(hours: 1),
+        );
+        if (now.isAfter(oneHourBefore) &&
+            now.isBefore(oneHourAfter) &&
+            notification.isRead) {
+          _firestoreService.markNotificationAsRead(notification.id!).then((_) {
+            notification.isRead = false;
+          });
+        } else if (now.isAfter(oneHourAfter) && !notification.isRead) {
+          _firestoreService.markNotificationAsRead(notification.id!).then((_) {
+            notification.isRead = true;
+          });
+        }
+      }
+      return notifications;
+    });
   }
 }

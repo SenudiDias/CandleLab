@@ -23,7 +23,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
   final TextEditingController _coolDownController = TextEditingController();
   final TextEditingController _curingController = TextEditingController();
   final TextEditingController _burningDayController = TextEditingController();
-  bool _isSaving = false; // Add flag to prevent multiple saves
+  bool _isSaving = false;
 
   TimeOfDay? _selectedReminderTime;
   List<String> _photoPaths = [];
@@ -102,7 +102,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
   }
 
   Future<void> _saveData() async {
-    if (_isSaving) return; // Prevent multiple saves
+    if (_isSaving) return;
     setState(() => _isSaving = true);
 
     final user = FirebaseAuth.instance.currentUser;
@@ -129,15 +129,12 @@ class _MakingScreen8State extends State<MakingScreen8> {
       photoPaths: _photoPaths,
     );
 
-    // Calculate and set total cost
     widget.candleData.totalCost = widget.candleData.calculateTotalCost();
 
     try {
-      // Save CandleData to Firestore
       final firestoreService = FirestoreService();
       await firestoreService.saveCandleData(widget.candleData);
 
-      // Schedule in-app notification if reminder is set
       if (_calculatedBurningDay != null && _selectedReminderTime != null) {
         final reminderDateTime = DateTime(
           _calculatedBurningDay!.year,
@@ -156,6 +153,8 @@ class _MakingScreen8State extends State<MakingScreen8> {
               'Your candle "${widget.candleData.sampleName}" is ready for burning.',
           scheduledDate: reminderDateTime,
           candleName: widget.candleData.sampleName ?? 'Unknown Candle',
+          candleType:
+              widget.candleData.candleType ?? 'Unknown', // Pass candleType
         );
       }
 

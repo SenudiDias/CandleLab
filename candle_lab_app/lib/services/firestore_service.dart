@@ -11,26 +11,6 @@ class FirestoreService {
       .collection('notifications');
 
   // Save or update a CandleData object
-  // Future<void> saveCandleData(CandleData candleData) async {
-  //   final user = FirebaseAuth.instance.currentUser;
-  //   if (user == null) {
-  //     throw Exception('User not authenticated');
-  //   }
-  //   try {
-  //     candleData.userId = user.uid; // Set userId
-  //     final data = candleData.toJson();
-  //     data['createdAt'] = DateTime.now().toIso8601String();
-  //     if (candleData.id == null) {
-  //       final docRef = await _candlesCollection.add(data);
-  //       candleData.id = docRef.id;
-  //     } else {
-  //       await _candlesCollection.doc(candleData.id).set(data);
-  //     }
-  //   } catch (e) {
-  //     throw Exception('Failed to save candle data: $e');
-  //   }
-  // }
-
   Future<void> saveCandleData(CandleData candleData) async {
     final user = FirebaseAuth.instance.currentUser;
     print('Current user: ${user?.uid ?? "No user authenticated"}');
@@ -110,30 +90,30 @@ class FirestoreService {
         await _notificationsCollection.doc(notification.id).set(data);
       }
     } catch (e) {
+      print('Error saving notification: $e');
       throw Exception('Failed to save notification: $e');
     }
   }
 
-  // Retrieve all notifications for the logged-in user, sorted by burningDay
-  Future<List<NotificationData>> getAllNotifications() async {
+  // Retrieve all notifications for the logged-in user as a Stream
+  Stream<List<NotificationData>> getAllNotificationsStream() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      throw Exception('User not authenticated');
+      return Stream.value([]);
     }
-    try {
-      final querySnapshot = await _notificationsCollection
-          .where('userId', isEqualTo: user.uid)
-          .orderBy('burningDay', descending: false)
-          .get();
-      return querySnapshot.docs
-          .map(
-            (doc) =>
-                NotificationData.fromJson(doc.data() as Map<String, dynamic>),
-          )
-          .toList();
-    } catch (e) {
-      throw Exception('Failed to retrieve notifications: $e');
-    }
+    return _notificationsCollection
+        .where('userId', isEqualTo: user.uid)
+        .orderBy('burningDay', descending: false)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(
+                (doc) => NotificationData.fromJson(
+                  doc.data() as Map<String, dynamic>,
+                ),
+              )
+              .toList(),
+        );
   }
 
   // Get stream of unread notification count for the logged-in user
@@ -163,11 +143,13 @@ class FirestoreService {
           await _notificationsCollection.doc(notificationId).update({
             'isRead': true,
           });
+          print('Notification $notificationId marked as read');
         } else {
           throw Exception('Notification not found or access denied');
         }
       }
     } catch (e) {
+      print('Error marking notification as read: $e');
       throw Exception('Failed to mark notification as read: $e');
     }
   }

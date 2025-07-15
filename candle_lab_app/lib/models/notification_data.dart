@@ -5,6 +5,7 @@ class NotificationData {
   String? userId; // Added userId field
   String candleId; // Reference to the CandleData document
   String candleName; // Name of the candle (sampleName)
+  String candleType; // Type of the candle (e.g., Container, Pillar, Mould)
   DateTime burningDay; // When the candle is ready
   bool isRead; // Whether the notification has been read
   DateTime createdAt; // When the notification was created
@@ -14,6 +15,7 @@ class NotificationData {
     this.userId,
     required this.candleId,
     required this.candleName,
+    required this.candleType, // Required parameter
     required this.burningDay,
     this.isRead = false,
     required this.createdAt,
@@ -24,6 +26,7 @@ class NotificationData {
     'userId': userId,
     'candleId': candleId,
     'candleName': candleName,
+    'candleType': candleType, // Added to JSON
     'burningDay': burningDay.toIso8601String(),
     'isRead': isRead,
     'createdAt': createdAt.toIso8601String(),
@@ -35,6 +38,8 @@ class NotificationData {
         userId: json['userId'],
         candleId: json['candleId'],
         candleName: json['candleName'],
+        candleType:
+            json['candleType'] ?? 'Unknown', // Default to 'Unknown' if missing
         burningDay: DateTime.parse(json['burningDay']),
         isRead: json['isRead'] ?? false,
         createdAt: DateTime.parse(json['createdAt']),

@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'custom_drawer.dart';
 import 'making_screen3.dart';
-import '../models/candle_data.dart'; // Import shared models
+import '../models/candle_data.dart';
+import 'dart:async';
 
 class MakingScreen2 extends StatefulWidget {
   final CandleData candleData;
@@ -22,12 +23,24 @@ class _MakingScreen2State extends State<MakingScreen2> {
   late Map<String, TextEditingController> weightControllers;
   late Map<String, TextEditingController> costPerKgControllers;
 
+  // For fade-in animation
+  bool _isContentVisible = false;
+
   @override
   void initState() {
     super.initState();
     _initializeWaxDetails();
     _initializeControllers();
     _calculateValues();
+
+    // Trigger the fade-in animation
+    Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isContentVisible = true;
+        });
+      }
+    });
   }
 
   void _initializeWaxDetails() {
@@ -71,28 +84,17 @@ class _MakingScreen2State extends State<MakingScreen2> {
 
   @override
   void dispose() {
-    for (var controller in productControllers.values) {
-      controller.dispose();
-    }
-    for (var controller in supplierControllers.values) {
-      controller.dispose();
-    }
-    for (var controller in weightControllers.values) {
-      controller.dispose();
-    }
-    for (var controller in costPerKgControllers.values) {
-      controller.dispose();
-    }
+    productControllers.values.forEach((controller) => controller.dispose());
+    supplierControllers.values.forEach((controller) => controller.dispose());
+    weightControllers.values.forEach((controller) => controller.dispose());
+    costPerKgControllers.values.forEach((controller) => controller.dispose());
     super.dispose();
   }
 
-  double get totalWeight {
-    return waxDetails.fold(0.0, (sum, detail) => sum + detail.weight);
-  }
-
-  double get totalCost {
-    return waxDetails.fold(0.0, (sum, detail) => sum + detail.cost);
-  }
+  double get totalWeight =>
+      waxDetails.fold(0.0, (sum, detail) => sum + detail.weight);
+  double get totalCost =>
+      waxDetails.fold(0.0, (sum, detail) => sum + detail.cost);
 
   void _calculateValues() {
     setState(() {
@@ -106,7 +108,6 @@ class _MakingScreen2State extends State<MakingScreen2> {
 
   void _updateWaxDetail(String waxType, String field, String value) {
     var detail = waxDetails.firstWhere((d) => d.waxType == waxType);
-
     switch (field) {
       case 'product':
         detail.product = value;
@@ -121,7 +122,6 @@ class _MakingScreen2State extends State<MakingScreen2> {
         detail.costPerKg = double.tryParse(value) ?? 0.0;
         break;
     }
-
     _calculateValues();
   }
 
@@ -134,17 +134,30 @@ class _MakingScreen2State extends State<MakingScreen2> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF795548), // Brown
-        title: const Text(
-          'Making - Wax Details',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Reusable decoration with shadow from global theme
+    final cardDecoration = BoxDecoration(
+      color: colorScheme.surface,
+      borderRadius: BorderRadius.circular(12.0),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.07),
+          spreadRadius: 1,
+          blurRadius: 8,
+          offset: const Offset(0, 2),
         ),
+      ],
+    );
+
+    return Scaffold(
+      // All colors and fonts are now inherited from the global theme in main.dart
+      appBar: AppBar(
+        title: const Text('Making - Wax Details'),
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
+            icon: const Icon(Icons.menu),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
@@ -153,11 +166,6 @@ class _MakingScreen2State extends State<MakingScreen2> {
             stream: _dateTimeStream(),
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
-              final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a'); // 12-hour format
-              final formattedDate = dateFormatter.format(now);
-              final formattedTime = timeFormatter.format(now);
-
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Column(
@@ -165,19 +173,19 @@ class _MakingScreen2State extends State<MakingScreen2> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formattedDate,
+                      DateFormat('MMM d, yyyy').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      formattedTime,
+                      DateFormat('h:mm a').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -191,138 +199,108 @@ class _MakingScreen2State extends State<MakingScreen2> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5D4037).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Text(
-                    'Sample: ${widget.candleData.sampleName}',
-                    style: const TextStyle(
-                      fontSize: 18.0,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Georgia',
-                      color: Color(0xFF5D4037),
+          child: AnimatedOpacity(
+            opacity: _isContentVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeIn,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    child: Text(
+                      'Sample Name: ${widget.candleData.sampleName}',
+                      style: textTheme.titleLarge?.copyWith(
+                        color: colorScheme.primary,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                ),
-                const SizedBox(height: 20.0),
-                const Text(
-                  'Wax Details',
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
+                  const SizedBox(height: 24.0),
+                  Text('Wax Details', style: textTheme.titleLarge),
+                  const SizedBox(height: 16.0),
+                  ...waxDetails.map(
+                    (detail) => _buildWaxDetailCard(detail, cardDecoration),
                   ),
-                ),
-                const SizedBox(height: 16.0),
-                ...waxDetails.map((detail) => _buildWaxDetailCard(detail)),
-                const SizedBox(height: 20.0),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF795548).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.0),
-                    border: Border.all(
-                      color: const Color(0xFF795548),
-                      width: 2.0,
+                  const SizedBox(height: 24.0),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
+                      border: Border.all(
+                        color: colorScheme.primary,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Weight: ${totalWeight.toStringAsFixed(2)} g',
+                          style: textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8.0),
+                        Text(
+                          'Total Cost: ${totalCost.toStringAsFixed(2)}',
+                          style: textTheme.titleMedium,
+                        ),
+                      ],
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 32.0),
+                  Row(
                     children: [
-                      Text(
-                        'Total Weight: ${totalWeight.toStringAsFixed(2)} g',
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: colorScheme.primary),
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
+                          ),
+                          child: Text(
+                            'Back',
+                            style: TextStyle(
+                              fontSize: 22,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        'Total Cost: ${totalCost.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              widget.candleData.waxDetails = waxDetails;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MakingScreen3(
+                                    candleData: widget.candleData,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          // Style is inherited from theme
+                          child: const Text('Next'),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 30.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            widget.candleData.waxDetails = waxDetails;
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MakingScreen3(
-                                  candleData: widget.candleData,
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF795548),
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Next',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -330,10 +308,13 @@ class _MakingScreen2State extends State<MakingScreen2> {
     );
   }
 
-  Widget _buildWaxDetailCard(WaxDetail detail) {
-    return Card(
+  Widget _buildWaxDetailCard(WaxDetail detail, BoxDecoration decoration) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
-      elevation: 3.0,
+      decoration: decoration,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -341,231 +322,151 @@ class _MakingScreen2State extends State<MakingScreen2> {
           children: [
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.symmetric(vertical: 10.0),
               decoration: BoxDecoration(
-                color: const Color(0xFF795548),
+                color: colorScheme.primary,
                 borderRadius: BorderRadius.circular(8.0),
               ),
               child: Text(
                 detail.waxType,
-                style: const TextStyle(
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  fontFamily: 'Georgia',
+                style: textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onPrimary,
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 16.0),
-            Column(
+            _buildTextFormField(
+              controller: productControllers[detail.waxType]!,
+              label: 'Product',
+              onChanged: (value) =>
+                  _updateWaxDetail(detail.waxType, 'product', value),
+            ),
+            const SizedBox(height: 12.0),
+            _buildTextFormField(
+              controller: supplierControllers[detail.waxType]!,
+              label: 'Supplier',
+              onChanged: (value) =>
+                  _updateWaxDetail(detail.waxType, 'supplier', value),
+            ),
+            const SizedBox(height: 12.0),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: productControllers[detail.waxType],
-                        decoration: const InputDecoration(
-                          labelText: 'Product',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) =>
-                            _updateWaxDetail(detail.waxType, 'product', value),
+                Expanded(
+                  child: _buildTextFormField(
+                    controller: weightControllers[detail.waxType]!,
+                    label: 'Weight (g)',
+                    hint: '0.0',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}'),
                       ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    Expanded(
-                      child: TextFormField(
-                        controller: supplierControllers[detail.waxType],
-                        decoration: const InputDecoration(
-                          labelText: 'Supplier',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) =>
-                            _updateWaxDetail(detail.waxType, 'supplier', value),
-                      ),
-                    ),
-                  ],
+                    ],
+                    onChanged: (value) =>
+                        _updateWaxDetail(detail.waxType, 'weight', value),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Required';
+                      if (double.tryParse(value) == null ||
+                          double.parse(value) <= 0)
+                        return 'Invalid';
+                      return null;
+                    },
+                  ),
                 ),
-                const SizedBox(height: 16.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: weightControllers[detail.waxType],
-                        decoration: const InputDecoration(
-                          labelText: 'Weight (g)',
-                          hintText: '0.0',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) <= 0) {
-                            return 'Invalid weight';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) =>
-                            _updateWaxDetail(detail.waxType, 'weight', value),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: _buildTextFormField(
+                    controller: costPerKgControllers[detail.waxType]!,
+                    label: 'Cost per 1 kg',
+                    hint: '0.0',
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}'),
                       ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    Expanded(
-                      child: TextFormField(
-                        controller: costPerKgControllers[detail.waxType],
-                        decoration: const InputDecoration(
-                          labelText: 'Cost per 1 kg',
-                          hintText: '0.0',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        style: const TextStyle(
-                          fontSize: 14.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) <= 0) {
-                            return 'Invalid cost';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) => _updateWaxDetail(
-                          detail.waxType,
-                          'costPerKg',
-                          value,
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                    onChanged: (value) =>
+                        _updateWaxDetail(detail.waxType, 'costPerKg', value),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Required';
+                      if (double.tryParse(value) == null ||
+                          double.parse(value) <= 0)
+                        return 'Invalid';
+                      return null;
+                    },
+                  ),
                 ),
-                const SizedBox(height: 16.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12.0),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Percentage (%)',
-                              style: TextStyle(
-                                fontSize: 12.0,
-                                color: Colors.grey,
-                                fontFamily: 'Georgia',
-                              ),
-                            ),
-                            Text(
-                              '${detail.percentage.toStringAsFixed(2)}%',
-                              style: const TextStyle(
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF5D4037),
-                                fontFamily: 'Georgia',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12.0),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Cost',
-                              style: TextStyle(
-                                fontSize: 12.0,
-                                color: Colors.grey,
-                                fontFamily: 'Georgia',
-                              ),
-                            ),
-                            Text(
-                              detail.cost.toStringAsFixed(2),
-                              style: const TextStyle(
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF5D4037),
-                                fontFamily: 'Georgia',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+              ],
+            ),
+            const SizedBox(height: 16.0),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInfoBox(
+                    'Percentage',
+                    '${detail.percentage.toStringAsFixed(2)}%',
+                  ),
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: _buildInfoBox('Cost', detail.cost.toStringAsFixed(2)),
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Helper widget for text form fields to reduce duplication
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    required ValueChanged<String> onChanged,
+    String? Function(String?)? validator,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label, hintText: hint),
+      style: Theme.of(context).textTheme.bodyLarge,
+      validator:
+          validator ??
+          (value) {
+            if (value == null || value.isEmpty) return 'Required';
+            return null;
+          },
+      onChanged: onChanged,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+    );
+  }
+
+  // Helper widget for the grey info boxes
+  Widget _buildInfoBox(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.black54),
+          ),
+          const SizedBox(height: 2),
+          Text(value, style: Theme.of(context).textTheme.titleMedium),
+        ],
       ),
     );
   }

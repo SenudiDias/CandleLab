@@ -5,6 +5,7 @@ import 'custom_drawer.dart';
 import 'making_screen6.dart';
 import 'making_screen7.dart';
 import '../models/candle_data.dart';
+import 'dart:async';
 
 class MakingScreen5 extends StatefulWidget {
   final CandleData candleData;
@@ -17,15 +18,15 @@ class MakingScreen5 extends StatefulWidget {
 
 class _MakingScreen5State extends State<MakingScreen5> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _supplierController = TextEditingController();
-  final TextEditingController _weightController = TextEditingController();
-  final TextEditingController _volumeController = TextEditingController();
-  final TextEditingController _newScentTypeController = TextEditingController();
-  final TextEditingController _percentageController = TextEditingController();
-  final TextEditingController _costController = TextEditingController();
-  String _scentType = 'Seasalt';
-  double _percentage = 0.0;
-  double _cost = 0.0;
+  final _supplierController = TextEditingController();
+  final _weightController = TextEditingController();
+  final _volumeController = TextEditingController();
+  final _newScentTypeController = TextEditingController();
+  final _percentageController = TextEditingController();
+  final _costController = TextEditingController();
+
+  String? _scentType;
+  bool _isContentVisible = false;
 
   @override
   void initState() {
@@ -34,6 +35,14 @@ class _MakingScreen5State extends State<MakingScreen5> {
     _updateCalculations();
     _weightController.addListener(_updateCalculations);
     _volumeController.addListener(_updateCalculations);
+
+    Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isContentVisible = true;
+        });
+      }
+    });
   }
 
   void _initializeData() {
@@ -43,52 +52,72 @@ class _MakingScreen5State extends State<MakingScreen5> {
       _supplierController.text = scent.supplier;
       _weightController.text = scent.weight.toString();
       _volumeController.text = scent.volume.toString();
-      _percentage = scent.percentage;
-      _cost = scent.cost;
+    } else {
+      // Set a default scent type if the list is not empty and no data exists
+      if (CandleData.availableScentTypes.isNotEmpty) {
+        _scentType = CandleData.availableScentTypes.first;
+      }
     }
   }
 
   void _updateCalculations() {
-    setState(() {
-      double scentWeight = double.tryParse(_weightController.text) ?? 0.0;
-      double totalWaxWeight = widget.candleData.waxDetails.fold(
-        0.0,
-        (sum, detail) => sum + detail.weight,
-      );
-      _percentage = totalWaxWeight > 0
-          ? (scentWeight / totalWaxWeight) * 100
-          : 0.0;
-      double volume = double.tryParse(_volumeController.text) ?? 0.0;
-      _cost = (10.5 * volume) / 125;
+    double scentWeight = double.tryParse(_weightController.text) ?? 0.0;
+    double totalWaxWeight = widget.candleData.waxDetails.fold(
+      0.0,
+      (sum, detail) => sum + detail.weight,
+    );
+    double percentage = totalWaxWeight > 0
+        ? (scentWeight / (scentWeight + totalWaxWeight)) * 100
+        : 0.0;
 
-      // Set values in the controllers
-      _percentageController.text = _percentage.toStringAsFixed(2);
-      _costController.text = _cost.toStringAsFixed(2);
-    });
+    double volume = double.tryParse(_volumeController.text) ?? 0.0;
+    double cost = (10.5 * volume) / 125; // Formula from original code
+
+    if (mounted) {
+      setState(() {
+        _percentageController.text = percentage.toStringAsFixed(2);
+        _costController.text = cost.toStringAsFixed(2);
+      });
+    }
   }
 
   @override
   void dispose() {
-    _supplierController.dispose();
     _weightController.removeListener(_updateCalculations);
-    _weightController.dispose();
     _volumeController.removeListener(_updateCalculations);
+    _supplierController.dispose();
+    _weightController.dispose();
     _volumeController.dispose();
     _newScentTypeController.dispose();
     _percentageController.dispose();
     _costController.dispose();
-
     super.dispose();
   }
 
-  void _saveData() {
+  void _saveDataAndNavigate() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     widget.candleData.scentDetail = ScentDetail(
-      scentType: _scentType,
+      scentType: _scentType ?? '',
       supplier: _supplierController.text,
       weight: double.tryParse(_weightController.text) ?? 0.0,
-      percentage: _percentage,
+      percentage: double.tryParse(_percentageController.text) ?? 0.0,
       volume: double.tryParse(_volumeController.text) ?? 0.0,
-      cost: _cost,
+      cost: double.tryParse(_costController.text) ?? 0.0,
+    );
+
+    Widget nextScreen;
+    if (widget.candleData.isColoured == true) {
+      nextScreen = MakingScreen6(candleData: widget.candleData);
+    } else {
+      nextScreen = MakingScreen7(candleData: widget.candleData);
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => nextScreen),
     );
   }
 
@@ -107,14 +136,10 @@ class _MakingScreen5State extends State<MakingScreen5> {
   void _deleteScentType(String scentType) {
     if (CandleData.availableScentTypes.length > 1) {
       setState(() {
-        if (_scentType == scentType) {
-          // Set to a new default before removing
-          final newList = CandleData.availableScentTypes
-              .where((e) => e != scentType)
-              .toList();
-          _scentType = newList.first;
-        }
         CandleData.availableScentTypes.remove(scentType);
+        if (_scentType == scentType) {
+          _scentType = CandleData.availableScentTypes.first;
+        }
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -132,30 +157,17 @@ class _MakingScreen5State extends State<MakingScreen5> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF795548), // Brown
-        title: const Text(
-          'Making - Scent Details',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
-        ),
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
+        title: const Text('Making - Scent Details'),
         actions: [
           StreamBuilder<DateTime>(
             stream: _dateTimeStream(),
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
-              final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a'); // 12-hour format
-              final formattedDate = dateFormatter.format(now);
-              final formattedTime = timeFormatter.format(now);
-
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Column(
@@ -163,19 +175,19 @@ class _MakingScreen5State extends State<MakingScreen5> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formattedDate,
+                      DateFormat('MMM d, yyyy').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      formattedTime,
+                      DateFormat('h:mm a').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -189,363 +201,250 @@ class _MakingScreen5State extends State<MakingScreen5> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5D4037).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sample: ${widget.candleData.sampleName}',
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        'Candle Type: ${widget.candleData.candleType}',
-                        style: const TextStyle(
-                          fontSize: 16.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20.0),
-                const Text(
-                  'Scent Details',
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Card(
-                  elevation: 3.0,
-                  child: Padding(
+          child: AnimatedOpacity(
+            opacity: _isContentVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeIn,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
                     child: Column(
                       children: [
-                        // Dropdown on its own row
-                        DropdownButtonFormField<String>(
-                          key: ValueKey(
-                            CandleData.availableScentTypes.join(),
-                          ), // <--- force rebuild
-                          value: _scentType,
-                          decoration: const InputDecoration(
-                            labelText: 'Scent Type',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          items: CandleData.availableScentTypes.map((
-                            String value,
-                          ) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    value,
-                                    style: const TextStyle(
-                                      fontSize: 14.0,
-                                      fontFamily: 'Georgia',
-                                      color: Color(0xFF5D4037),
-                                    ),
-                                  ),
-                                  if (value != _scentType)
-                                    IconButton(
-                                      icon: const Icon(Icons.delete, size: 20),
-                                      onPressed: () {
-                                        _deleteScentType(value);
-                                      },
-                                    ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _scentType = newValue!;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please select a scent type';
-                            }
-                            return null;
-                          },
-                        ),
-
-                        const SizedBox(height: 12.0),
-
-                        // New Scent + Button aligned horizontally
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _newScentTypeController,
-                                decoration: const InputDecoration(
-                                  labelText: 'New Scent Type',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12.0),
-                            ElevatedButton(
-                              onPressed: _addNewScentType,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF795548),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0,
-                                  vertical: 16.0,
-                                ),
-                              ),
-                              child: const Text(
-                                'Add Scent',
-                                style: TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16.0),
-                        TextFormField(
-                          controller: _supplierController,
-                          decoration: const InputDecoration(
-                            labelText: 'Supplier',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Required';
-                            }
-                            return null;
-                          },
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
+                        Text(
+                          'Sample Name: ${widget.candleData.sampleName}',
+                          style: textTheme.titleLarge?.copyWith(
+                            color: colorScheme.primary,
                           ),
                         ),
-                        const SizedBox(height: 16.0),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _weightController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Weight (g)',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}'),
-                                  ),
-                                ],
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Required';
-                                  }
-                                  if (double.tryParse(value) == null ||
-                                      double.parse(value) <= 0) {
-                                    return 'Invalid weight';
-                                  }
-                                  return null;
-                                },
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12.0),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _percentageController,
-                                readOnly: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Percentage (%)',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Color(0xFFE0E0E0),
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16.0),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _volumeController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Volume',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}'),
-                                  ),
-                                ],
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Required';
-                                  }
-                                  if (double.tryParse(value) == null ||
-                                      double.parse(value) <= 0) {
-                                    return 'Invalid volume';
-                                  }
-                                  return null;
-                                },
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12.0),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _costController,
-                                readOnly: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Cost (\$)',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Color(0xFFE0E0E0),
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 4.0),
+                        Text(
+                          'Candle Type: ${widget.candleData.candleType}',
+                          style: textTheme.titleMedium,
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 30.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
+                  const SizedBox(height: 24.0),
+
+                  _buildScentForm(),
+
+                  const SizedBox(height: 32.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: colorScheme.primary),
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
                           ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _saveData();
-                            Widget nextScreen;
-                            if (widget.candleData.isColoured == true) {
-                              nextScreen = MakingScreen6(
-                                candleData: widget.candleData,
-                              );
-                            } else {
-                              nextScreen = MakingScreen7(
-                                candleData: widget.candleData,
-                              );
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => nextScreen,
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF795548),
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Next',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
+                          child: Text(
+                            'Back',
+                            style: TextStyle(
+                              fontSize: 22,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _saveDataAndNavigate,
+                          child: const Text('Next'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFormCard({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16.0),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScentForm() {
+    return _buildFormCard(
+      title: 'Scent Details',
+      child: Column(
+        children: [
+          DropdownButtonFormField<String>(
+            key: ValueKey(
+              CandleData.availableScentTypes.length.toString() +
+                  (_scentType ?? ''),
+            ),
+            value: _scentType,
+            decoration: const InputDecoration(labelText: 'Scent Type'),
+            items: CandleData.availableScentTypes.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(value),
+                    if (value != _scentType)
+                      IconButton(
+                        icon: Icon(
+                          Icons.delete_outline,
+                          size: 22,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        onPressed: () => _deleteScentType(value),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _scentType = newValue;
+              });
+            },
+            validator: (value) => (value == null || value.isEmpty)
+                ? 'Please select a scent'
+                : null,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _newScentTypeController,
+                  label: 'New Scent Type',
+                  isOptional: true,
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: _addNewScentType,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
+                child: const Text('Add Scent'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildTextFormField(
+            controller: _supplierController,
+            label: 'Supplier',
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _weightController,
+                  label: 'Weight (g)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _percentageController,
+                  label: 'Percentage (%)',
+                  readOnly: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _volumeController,
+                  label: 'Volume',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _costController,
+                  label: 'Cost (\$)',
+                  readOnly: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+    bool isOptional = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      decoration: InputDecoration(
+        labelText: label,
+        fillColor: readOnly ? Colors.black.withOpacity(0.05) : null,
+      ),
+      keyboardType: keyboardType,
+      inputFormatters: keyboardType == TextInputType.number
+          ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))]
+          : [],
+      validator: (value) {
+        if (readOnly) return null;
+        if (!isOptional && (value == null || value.isEmpty)) return 'Required';
+        if (keyboardType == TextInputType.number) {
+          final val = double.tryParse(value ?? '');
+          if (val == null || val < 0) return 'Invalid';
+        }
+        return null;
+      },
     );
   }
 }

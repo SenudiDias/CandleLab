@@ -7,6 +7,7 @@ import 'making_screen5.dart';
 import 'making_screen6.dart';
 import 'making_screen7.dart';
 import '../models/candle_data.dart';
+import 'dart:async';
 
 class MakingScreen3 extends StatefulWidget {
   final CandleData candleData;
@@ -19,37 +20,46 @@ class MakingScreen3 extends StatefulWidget {
 
 class _MakingScreen3State extends State<MakingScreen3> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _numberOfContainersController =
-      TextEditingController();
-  final TextEditingController _weightPerCandleController =
-      TextEditingController();
-  final TextEditingController _waxDepthController = TextEditingController();
-  final TextEditingController _containerDiameterController =
-      TextEditingController();
-  final TextEditingController _containerCostController =
-      TextEditingController();
-  final TextEditingController _containerSupplierController =
-      TextEditingController();
-  final TextEditingController _numberOfPillarsController =
-      TextEditingController();
-  final TextEditingController _pillarWaxWeightController =
-      TextEditingController();
-  final TextEditingController _pillarHeightController = TextEditingController();
-  final TextEditingController _largestWidthController = TextEditingController();
-  final TextEditingController _smallestWidthController =
-      TextEditingController();
-  final TextEditingController _mouldNumberController = TextEditingController();
 
+  // Controllers for Container form
+  final _numberOfContainersController = TextEditingController();
+  final _weightPerCandleController = TextEditingController();
+  final _waxDepthController = TextEditingController();
+  final _containerDiameterController = TextEditingController();
+  final _containerCostController = TextEditingController();
+  final _containerSupplierController = TextEditingController();
+
+  // Controllers for Pillar form
+  final _numberOfPillarsController = TextEditingController();
+  final _pillarWaxWeightController = TextEditingController();
+  final _pillarHeightController = TextEditingController();
+  final _largestWidthController = TextEditingController();
+  final _smallestWidthController = TextEditingController();
+
+  // Controllers for Mould form
+  final _mouldNumberController = TextEditingController();
+
+  // State variables
   bool _containerHeated = false;
   String _mouldType = 'Melt';
+  bool _isContentVisible = false;
 
   @override
   void initState() {
     super.initState();
     _initializeData();
+    // Trigger the fade-in animation
+    Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isContentVisible = true;
+        });
+      }
+    });
   }
 
   void _initializeData() {
+    // Initialize from existing data if available
     if (widget.candleData.containerDetail != null) {
       final container = widget.candleData.containerDetail!;
       _numberOfContainersController.text = container.numberOfContainers
@@ -61,12 +71,12 @@ class _MakingScreen3State extends State<MakingScreen3> {
       _containerCostController.text = container.cost.toString();
       _containerSupplierController.text = container.supplier;
       _containerHeated = container.containerHeated;
-    } else {
+    } else if (widget.candleData.candleType == 'Container') {
       double totalWaxWeight = widget.candleData.waxDetails.fold(
         0.0,
         (sum, detail) => sum + detail.weight,
       );
-      _weightPerCandleController.text = totalWaxWeight.toString();
+      _weightPerCandleController.text = totalWaxWeight.toStringAsFixed(2);
     }
 
     if (widget.candleData.pillarDetail != null) {
@@ -76,12 +86,12 @@ class _MakingScreen3State extends State<MakingScreen3> {
       _pillarHeightController.text = pillar.height.toString();
       _largestWidthController.text = pillar.largestWidth.toString();
       _smallestWidthController.text = pillar.smallestWidth.toString();
-    } else {
+    } else if (widget.candleData.candleType == 'Pillar') {
       double totalWaxWeight = widget.candleData.waxDetails.fold(
         0.0,
         (sum, detail) => sum + detail.weight,
       );
-      _pillarWaxWeightController.text = totalWaxWeight.toString();
+      _pillarWaxWeightController.text = totalWaxWeight.toStringAsFixed(2);
     }
 
     if (widget.candleData.mouldDetail != null) {
@@ -93,6 +103,7 @@ class _MakingScreen3State extends State<MakingScreen3> {
 
   @override
   void dispose() {
+    // Dispose all controllers
     _numberOfContainersController.dispose();
     _weightPerCandleController.dispose();
     _waxDepthController.dispose();
@@ -108,7 +119,12 @@ class _MakingScreen3State extends State<MakingScreen3> {
     super.dispose();
   }
 
-  void _saveData() {
+  void _saveDataAndNavigate() {
+    if (!_formKey.currentState!.validate()) {
+      return; // If form is not valid, do not proceed
+    }
+
+    // Save the data based on the candle type
     if (widget.candleData.candleType == 'Container') {
       widget.candleData.containerDetail = ContainerDetail(
         numberOfContainers:
@@ -136,6 +152,23 @@ class _MakingScreen3State extends State<MakingScreen3> {
         number: int.tryParse(_mouldNumberController.text) ?? 0,
       );
     }
+
+    // Determine the next screen based on the candle properties
+    Widget nextScreen;
+    if (widget.candleData.isWicked == true) {
+      nextScreen = MakingScreen4(candleData: widget.candleData);
+    } else if (widget.candleData.isScented == true) {
+      nextScreen = MakingScreen5(candleData: widget.candleData);
+    } else if (widget.candleData.isColoured == true) {
+      nextScreen = MakingScreen6(candleData: widget.candleData);
+    } else {
+      nextScreen = MakingScreen7(candleData: widget.candleData);
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => nextScreen),
+    );
   }
 
   Stream<DateTime> _dateTimeStream() async* {
@@ -147,30 +180,17 @@ class _MakingScreen3State extends State<MakingScreen3> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF795548), // Brown
-        title: const Text(
-          'Making - Candle Details',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
-        ),
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
+        title: const Text('Making - Candle Details'),
         actions: [
           StreamBuilder<DateTime>(
             stream: _dateTimeStream(),
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
-              final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a'); // 12-hour format
-              final formattedDate = dateFormatter.format(now);
-              final formattedTime = timeFormatter.format(now);
-
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Column(
@@ -178,19 +198,19 @@ class _MakingScreen3State extends State<MakingScreen3> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formattedDate,
+                      DateFormat('MMM d, yyyy').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      formattedTime,
+                      DateFormat('h:mm a').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -204,127 +224,80 @@ class _MakingScreen3State extends State<MakingScreen3> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5D4037).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.0),
+          child: AnimatedOpacity(
+            opacity: _isContentVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeIn,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Sample Name: ${widget.candleData.sampleName}',
+                          style: textTheme.titleLarge?.copyWith(
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4.0),
+                        Text(
+                          'Candle Type: ${widget.candleData.candleType}',
+                          style: textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 24.0),
+
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                    child: _buildFormContent(),
+                  ),
+
+                  const SizedBox(height: 32.0),
+                  Row(
                     children: [
-                      Text(
-                        'Sample: ${widget.candleData.sampleName}',
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: colorScheme.primary),
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
+                          ),
+                          child: Text(
+                            'Back',
+                            style: TextStyle(
+                              fontSize: 22,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        'Candle Type: ${widget.candleData.candleType}',
-                        style: const TextStyle(
-                          fontSize: 16.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _saveDataAndNavigate,
+                          child: const Text('Next'),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 20.0),
-                if (widget.candleData.candleType == 'Container') ...[
-                  _buildContainerForm(),
-                ] else if (widget.candleData.candleType == 'Pillar') ...[
-                  _buildPillarForm(),
-                ] else if (widget.candleData.candleType == 'Mould') ...[
-                  _buildMouldForm(),
                 ],
-                const SizedBox(height: 30.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _saveData();
-                            Widget nextScreen;
-                            if (widget.candleData.isWicked == true) {
-                              nextScreen = MakingScreen4(
-                                candleData: widget.candleData,
-                              );
-                            } else if (widget.candleData.isScented == true) {
-                              nextScreen = MakingScreen5(
-                                candleData: widget.candleData,
-                              );
-                            } else if (widget.candleData.isColoured == true) {
-                              nextScreen = MakingScreen6(
-                                candleData: widget.candleData,
-                              );
-                            } else {
-                              nextScreen = MakingScreen7(
-                                candleData: widget.candleData,
-                              );
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => nextScreen,
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF795548),
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Next',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -332,474 +305,240 @@ class _MakingScreen3State extends State<MakingScreen3> {
     );
   }
 
-  Widget _buildContainerForm() {
+  Widget _buildFormContent() {
+    switch (widget.candleData.candleType) {
+      case 'Container':
+        return _buildContainerForm(key: const ValueKey('container'));
+      case 'Pillar':
+        return _buildPillarForm(key: const ValueKey('pillar'));
+      case 'Mould':
+        return _buildMouldForm(key: const ValueKey('mould'));
+      default:
+        return Container(key: const ValueKey('empty'));
+    }
+  }
+
+  Widget _buildFormCard({required String title, required Widget child}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Container Details',
-          style: TextStyle(
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Georgia',
-            color: Color(0xFF5D4037),
-          ),
-        ),
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16.0),
-        Card(
-          elevation: 3.0,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _numberOfContainersController,
-                        decoration: const InputDecoration(
-                          labelText: 'No. of Containers',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (int.tryParse(value) == null ||
-                              int.parse(value) <= 0) {
-                            return 'Invalid number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _weightPerCandleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Weight/candle (g)',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) <= 0) {
-                            return 'Invalid weight';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _waxDepthController,
-                        decoration: const InputDecoration(
-                          labelText: 'Wax Depth (mm)',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) <= 0) {
-                            return 'Invalid depth';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _containerDiameterController,
-                        decoration: const InputDecoration(
-                          labelText: 'Container Diameter (mm)',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) <= 0) {
-                            return 'Invalid diameter';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _containerCostController,
-                        decoration: const InputDecoration(
-                          labelText: 'Cost (\$)',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) < 0) {
-                            return 'Invalid cost';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _containerSupplierController,
-                        decoration: const InputDecoration(
-                          labelText: 'Supplier',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16.0),
-                Row(
-                  children: [
-                    const Text(
-                      'Container Heated: ',
-                      style: TextStyle(
-                        fontSize: 16.0,
-                        fontFamily: 'Georgia',
-                        color: Color(0xFF5D4037),
-                      ),
-                    ),
-                    Switch(
-                      value: _containerHeated,
-                      onChanged: (value) {
-                        setState(() {
-                          _containerHeated = value;
-                        });
-                      },
-                      activeColor: const Color(0xFF795548),
-                    ),
-                    Text(
-                      _containerHeated ? 'Yes' : 'No',
-                      style: const TextStyle(
-                        fontSize: 16.0,
-                        fontFamily: 'Georgia',
-                        color: Color(0xFF5D4037),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            // UPDATED: Using the theme's surface color (white) instead of pink
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
+          child: child,
         ),
       ],
     );
   }
 
-  Widget _buildPillarForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Pillar Details',
-          style: TextStyle(
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Georgia',
-            color: Color(0xFF5D4037),
-          ),
-        ),
-        const SizedBox(height: 16.0),
-        Card(
-          elevation: 3.0,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _numberOfPillarsController,
-                        decoration: const InputDecoration(
-                          labelText: 'No. of Pillars',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (int.tryParse(value) == null ||
-                              int.parse(value) <= 0) {
-                            return 'Invalid number';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _pillarWaxWeightController,
-                        decoration: const InputDecoration(
-                          labelText: 'Wax Weight (g)',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) <= 0) {
-                            return 'Invalid weight';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _pillarHeightController,
-                  decoration: const InputDecoration(
-                    labelText: 'Height (mm)',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
+  Widget _buildContainerForm({Key? key}) {
+    return _buildFormCard(
+      title: 'Container Details',
+      child: Column(
+        key: key,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _numberOfContainersController,
+                  label: 'No. of Containers',
                   keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(r'^\d+\.?\d{0,2}'),
-                    ),
-                  ],
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Required';
-                    }
-                    if (double.tryParse(value) == null ||
-                        double.parse(value) <= 0) {
-                      return 'Invalid height';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 16.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _largestWidthController,
-                        decoration: const InputDecoration(
-                          labelText: 'Largest Width (mm)',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) <= 0) {
-                            return 'Invalid width';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _smallestWidthController,
-                        decoration: const InputDecoration(
-                          labelText: 'Smallest Width (mm)',
-                          border: OutlineInputBorder(),
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^\d+\.?\d{0,2}'),
-                          ),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null ||
-                              double.parse(value) <= 0) {
-                            return 'Invalid width';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _weightPerCandleController,
+                  label: 'Weight/candle (g)',
+                  keyboardType: TextInputType.number,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _waxDepthController,
+                  label: 'Wax Depth (mm)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _containerDiameterController,
+                  label: 'Container Diameter (mm)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _containerCostController,
+                  label: 'Cost (\$)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _containerSupplierController,
+                  label: 'Supplier',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text(
+                'Container Heated:',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(width: 10),
+              Switch(
+                value: _containerHeated,
+                onChanged: (value) => setState(() => _containerHeated = value),
+                activeColor: Theme.of(context).colorScheme.primary,
+              ),
+              Text(
+                _containerHeated ? 'Yes' : 'No',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildMouldForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Mould Details',
-          style: TextStyle(
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Georgia',
-            color: Color(0xFF5D4037),
-          ),
-        ),
-        const SizedBox(height: 16.0),
-        Card(
-          elevation: 3.0,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                DropdownButtonFormField<String>(
-                  value: _mouldType,
-                  decoration: const InputDecoration(
-                    labelText: 'Type',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  items: ['Melt', 'Wicked'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _mouldType = newValue!;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select a type';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _mouldNumberController,
-                  decoration: const InputDecoration(
-                    labelText: 'Number',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
+  Widget _buildPillarForm({Key? key}) {
+    return _buildFormCard(
+      title: 'Pillar Details',
+      child: Column(
+        key: key,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _numberOfPillarsController,
+                  label: 'No. of Pillars',
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Required';
-                    }
-                    if (int.tryParse(value) == null || int.parse(value) <= 0) {
-                      return 'Invalid number';
-                    }
-                    return null;
-                  },
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _pillarWaxWeightController,
+                  label: 'Wax Weight (g)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          _buildTextFormField(
+            controller: _pillarHeightController,
+            label: 'Height (mm)',
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _largestWidthController,
+                  label: 'Largest Width (mm)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _smallestWidthController,
+                  label: 'Smallest Width (mm)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMouldForm({Key? key}) {
+    return _buildFormCard(
+      title: 'Mould Details',
+      child: Column(
+        key: key,
+        children: [
+          // UPDATED: Dropdown now uses the global theme
+          DropdownButtonFormField<String>(
+            value: _mouldType,
+            decoration: const InputDecoration(labelText: 'Type'),
+            items: ['Melt', 'Wicked'].map((String value) {
+              return DropdownMenuItem<String>(value: value, child: Text(value));
+            }).toList(),
+            onChanged: (String? newValue) =>
+                setState(() => _mouldType = newValue!),
+            validator: (value) => (value == null || value.isEmpty)
+                ? 'Please select a type'
+                : null,
+          ),
+          const SizedBox(height: 12),
+          _buildTextFormField(
+            controller: _mouldNumberController,
+            label: 'Number',
+            keyboardType: TextInputType.number,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    // UPDATED: This now fully inherits its style from the global theme
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label),
+      keyboardType: keyboardType,
+      inputFormatters: keyboardType == TextInputType.number
+          ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))]
+          : [],
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Required';
+        if (keyboardType == TextInputType.number &&
+            (double.tryParse(value) == null || double.parse(value) < 0)) {
+          return 'Invalid';
+        }
+        return null;
+      },
     );
   }
 }

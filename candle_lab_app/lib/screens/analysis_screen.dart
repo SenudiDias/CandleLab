@@ -19,7 +19,7 @@ class AnalysisScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF795548), // Brown
         title: const Text(
           'Analysis Charts',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
+          style: TextStyle(fontFamily: 'ThSarabunNew', color: Colors.white),
         ),
         leading: Builder(
           builder: (context) => IconButton(
@@ -39,7 +39,7 @@ class AnalysisScreen extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14.0,
                     color: Colors.white,
-                    fontFamily: 'Georgia',
+                    fontFamily: 'ThSarabunNew',
                   ),
                 ),
                 Text(
@@ -47,7 +47,7 @@ class AnalysisScreen extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14.0,
                     color: Colors.white,
-                    fontFamily: 'Georgia',
+                    fontFamily: 'ThSarabunNew',
                   ),
                 ),
               ],
@@ -66,7 +66,7 @@ class AnalysisScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 36.0,
                   fontWeight: FontWeight.bold,
-                  fontFamily: 'Georgia',
+                  fontFamily: 'ThSarabunNew',
                   color: Color(0xFF5D4037),
                 ),
               ),

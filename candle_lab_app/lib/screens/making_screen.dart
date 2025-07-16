@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'custom_drawer.dart';
 import 'making_screen2.dart';
 import '../models/candle_data.dart';
+import '../services/firestore_service.dart';
 import 'login_screen.dart';
+import 'dart:async';
 
 class MakingScreen extends StatefulWidget {
   const MakingScreen({super.key});
@@ -13,16 +15,18 @@ class MakingScreen extends StatefulWidget {
   State<MakingScreen> createState() => _MakingScreenState();
 }
 
-class _MakingScreenState extends State<MakingScreen> {
+class _MakingScreenState extends State<MakingScreen>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _candleData = CandleData();
   final _sampleNameController = TextEditingController();
   final _newWaxTypeController = TextEditingController();
+  final FirestoreService _firestoreService = FirestoreService();
 
-  // Available wax types (can be modified)
+  bool _isContentVisible = false;
   List<String> availableWaxTypes = ['Soy', 'Coconut', 'Beeswax', 'Parap'];
+  String? _sampleNameError;
 
-  // Stream for updating date and time every minute
   Stream<DateTime> _dateTimeStream() async* {
     while (true) {
       yield DateTime.now();
@@ -33,11 +37,18 @@ class _MakingScreenState extends State<MakingScreen> {
   @override
   void initState() {
     super.initState();
-    // Set userId when initializing CandleData
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _candleData.userId = user.uid;
     }
+
+    Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isContentVisible = true;
+        });
+      }
+    });
   }
 
   @override
@@ -47,7 +58,6 @@ class _MakingScreenState extends State<MakingScreen> {
     super.dispose();
   }
 
-  // Method to add new wax type
   void _addNewWaxType() {
     if (_newWaxTypeController.text.isNotEmpty) {
       setState(() {
@@ -60,7 +70,6 @@ class _MakingScreenState extends State<MakingScreen> {
     }
   }
 
-  // Method to delete wax type
   void _deleteWaxType(String waxType) {
     setState(() {
       availableWaxTypes.remove(waxType);
@@ -68,61 +77,41 @@ class _MakingScreenState extends State<MakingScreen> {
     });
   }
 
-  // Method to clear all data with confirmation
   Future<void> _clearAllData() async {
     return showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text(
-            'Clear All Data',
-            style: TextStyle(fontFamily: 'Georgia', color: Color(0xFF5D4037)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          content: const Text(
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          title: Text(
+            'Clear All Data',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          content: Text(
             'Are you sure you want to clear all entered data? This action cannot be undone.',
-            style: TextStyle(fontFamily: 'Georgia', color: Color(0xFF5D4037)),
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: const Text(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
                 'Cancel',
-                style: TextStyle(
-                  fontFamily: 'Georgia',
-                  color: Color(0xFF795548),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop();
                 setState(() {
-                  // Reset CandleData
                   _candleData.reset();
-                  // Reset controllers
                   _sampleNameController.clear();
                   _newWaxTypeController.clear();
-                  // Reset wax types selection
-                  _candleData.waxTypes.clear();
-                  // Reset other fields
-                  _candleData.candleType = null;
-                  _candleData.isWicked = null;
-                  _candleData.isScented = false;
-                  _candleData.isColoured = false;
-                  _candleData.waxDetails.clear();
-                  _candleData.containerDetail = null;
-                  _candleData.pillarDetail = null;
-                  _candleData.mouldDetail = null;
-                  _candleData.wickDetail = null;
-                  _candleData.scentDetail = null;
-                  _candleData.colourDetail = null;
-                  _candleData.temperatureDetail = null;
-                  _candleData.coolingCuringDetail = null;
-                  _candleData.createdAt = null;
-                  _candleData.totalCost = null;
-                  // Reinitialize userId
+                  _sampleNameError = null;
                   final user = FirebaseAuth.instance.currentUser;
                   if (user != null) {
                     _candleData.userId = user.uid;
@@ -132,9 +121,12 @@ class _MakingScreenState extends State<MakingScreen> {
                   const SnackBar(content: Text('All data has been cleared.')),
                 );
               },
-              child: const Text(
+              child: Text(
                 'Clear',
-                style: TextStyle(fontFamily: 'Georgia', color: Colors.red),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -143,9 +135,35 @@ class _MakingScreenState extends State<MakingScreen> {
     );
   }
 
+  Future<void> _checkSampleName(String value) async {
+    if (value.isEmpty) {
+      setState(() {
+        _sampleNameError = 'Please enter a sample name';
+      });
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final candles = await _firestoreService.getAllCandleData();
+      final exists = candles.any(
+        (candle) => candle.sampleName == value && candle.userId == user.uid,
+      );
+      setState(() {
+        _sampleNameError = exists ? 'Sample name already exists' : null;
+        _candleData.sampleName = value;
+      });
+    } catch (e) {
+      setState(() {
+        _sampleNameError = 'Error checking sample name';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Check if user is authenticated
     if (FirebaseAuth.instance.currentUser == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacement(
@@ -156,17 +174,29 @@ class _MakingScreenState extends State<MakingScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC), // Beige background
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF795548), // Brown
-        title: const Text(
-          'Making',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final cardDecoration = BoxDecoration(
+      color: colorScheme.surface,
+      borderRadius: BorderRadius.circular(12.0),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.07),
+          spreadRadius: 1,
+          blurRadius: 8,
+          offset: const Offset(0, 2),
         ),
+      ],
+    );
+
+    return Scaffold(
+      backgroundColor: colorScheme.background,
+      appBar: AppBar(
+        title: const Text('Making'),
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
+            icon: Icon(Icons.menu, color: colorScheme.onPrimary),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
@@ -188,18 +218,18 @@ class _MakingScreenState extends State<MakingScreen> {
                   children: [
                     Text(
                       formattedDate,
-                      style: const TextStyle(
-                        fontSize: 14.0,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
                       formattedTime,
-                      style: const TextStyle(
-                        fontSize: 14.0,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -213,501 +243,371 @@ class _MakingScreenState extends State<MakingScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(12.0),
-                  color: const Color(0xFF5D4037).withOpacity(0.1),
-                  child: TextFormField(
-                    controller: _sampleNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Sample Name',
-                      border: OutlineInputBorder(),
-                      filled: true,
-                      fillColor: Colors.white,
+          child: AnimatedOpacity(
+            opacity: _isContentVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeIn,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
-                    style: const TextStyle(
-                      fontSize: 16.0,
-                      fontFamily: 'Georgia',
-                      color: Color(0xFF5D4037),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Sample Name', style: textTheme.titleLarge),
+                        const SizedBox(height: 8.0),
+                        TextFormField(
+                          controller: _sampleNameController,
+                          decoration: InputDecoration(
+                            hintText: 'Enter a name for your sample',
+                            errorText: _sampleNameError,
+                            errorStyle: TextStyle(color: colorScheme.error),
+                          ),
+                          style: textTheme.bodyLarge,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter a sample name';
+                            }
+                            if (_sampleNameError ==
+                                'Sample name already exists') {
+                              return _sampleNameError;
+                            }
+                            return null;
+                          },
+                          onChanged: _checkSampleName,
+                        ),
+                      ],
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a sample name';
-                      }
-                      return null;
-                    },
-                    onChanged: (value) {
-                      _candleData.sampleName = value;
-                    },
                   ),
-                ),
-                const SizedBox(height: 20.0),
-                // Candle Type
-                const Text(
-                  'Candle Type',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                DropdownButtonFormField<String>(
-                  value: _candleData.candleType,
-                  hint: const Text('Select Candle Type'),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Container',
-                      child: Text('Container'),
+                  const SizedBox(height: 24.0),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
                     ),
-                    DropdownMenuItem(value: 'Pillar', child: Text('Pillar')),
-                    DropdownMenuItem(value: 'Mould', child: Text('Mould')),
-                    DropdownMenuItem(
-                      value: 'Free pour',
-                      child: Text('Free pour'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _candleData.candleType = value;
-                      // Set default wick status based on candle type
-                      if (value == 'Container' || value == 'Pillar') {
-                        _candleData.isWicked = true;
-                      } else {
-                        _candleData.isWicked = null;
-                      }
-                    });
-                  },
-                  validator: (value) =>
-                      value == null ? 'Please select a candle type' : null,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 20.0),
-                // Wax Used (Multi-select with Add/Delete functionality)
-                const Text(
-                  'Wax Used',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                const SizedBox(height: 10.0),
-                // Add new wax type section
-                Container(
-                  padding: const EdgeInsets.all(12.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _newWaxTypeController,
-                          decoration: const InputDecoration(
-                            hintText: 'Add new wax type...',
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 8.0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Candle Type', style: textTheme.titleLarge),
+                        const SizedBox(height: 8.0),
+                        DropdownButtonFormField<String>(
+                          value: _candleData.candleType,
+                          hint: const Text('Select Candle Type'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'Container',
+                              child: Text('Container'),
                             ),
-                          ),
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
-                          ),
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: _addNewWaxType,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF795548),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 8.0,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Add',
-                          style: TextStyle(
-                            fontSize: 12.0,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 15.0),
-                // Wax types list with checkboxes and delete buttons
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Column(
-                    children: availableWaxTypes.map((wax) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: Colors.grey.shade200,
-                              width: 0.5,
+                            DropdownMenuItem(
+                              value: 'Pillar',
+                              child: Text('Pillar'),
                             ),
-                          ),
+                            DropdownMenuItem(
+                              value: 'Mould',
+                              child: Text('Mould'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Free pour',
+                              child: Text('Free pour'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              _candleData.candleType = value;
+                              _candleData.isWicked =
+                                  (value == 'Container' || value == 'Pillar')
+                                  ? true
+                                  : null;
+                            });
+                          },
+                          validator: (value) => value == null
+                              ? 'Please select a candle type'
+                              : null,
+                          decoration: const InputDecoration(),
                         ),
-                        child: Row(
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24.0),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Wax Used', style: textTheme.titleLarge),
+                        const SizedBox(height: 8.0),
+                        Row(
                           children: [
                             Expanded(
-                              child: CheckboxListTile(
-                                title: Text(
-                                  wax,
-                                  style: const TextStyle(
-                                    fontSize: 14.0,
-                                    fontFamily: 'Georgia',
-                                    color: Color(0xFF5D4037),
+                              child: TextField(
+                                controller: _newWaxTypeController,
+                                decoration: InputDecoration(
+                                  hintText: 'Add new wax type...',
+                                  hintStyle: textTheme.bodyMedium?.copyWith(
+                                    color: colorScheme.onSurface.withOpacity(
+                                      0.6,
+                                    ),
                                   ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    borderSide: BorderSide(
+                                      color: Color(0xFFF5F5DC),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    borderSide: BorderSide(
+                                      color: Color(0xFF795548),
+                                      width: 2.0,
+                                    ),
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8.0),
+                                    borderSide: BorderSide(
+                                      color: Color(0xFFF5F5DC),
+                                    ),
+                                  ),
+
+                                  // border: const OutlineInputBorder(),
+                                  filled: false,
                                 ),
-                                value: _candleData.waxTypes.contains(wax),
-                                onChanged: (checked) {
-                                  setState(() {
-                                    if (checked == true) {
-                                      if (!_candleData.waxTypes.contains(wax)) {
-                                        _candleData.waxTypes.add(wax);
-                                      }
-                                    } else {
-                                      _candleData.waxTypes.remove(wax);
-                                    }
-                                  });
-                                },
-                                activeColor: const Color(0xFF795548),
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
+                                style: textTheme.bodyMedium,
                               ),
                             ),
-                            IconButton(
-                              onPressed: () {
-                                // Show confirmation dialog before deleting
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text(
-                                        'Delete Wax Type',
-                                        style: TextStyle(
-                                          fontFamily: 'Georgia',
-                                          color: Color(0xFF5D4037),
-                                        ),
-                                      ),
-                                      content: Text(
-                                        'Are you sure you want to delete "$wax"?',
-                                        style: const TextStyle(
-                                          fontFamily: 'Georgia',
-                                          color: Color(0xFF5D4037),
-                                        ),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                          child: const Text(
-                                            'Cancel',
-                                            style: TextStyle(
-                                              fontFamily: 'Georgia',
-                                              color: Color(0xFF795548),
-                                            ),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            _deleteWaxType(wax);
-                                            Navigator.of(context).pop();
-                                          },
-                                          child: const Text(
-                                            'Delete',
-                                            style: TextStyle(
-                                              fontFamily: 'Georgia',
-                                              color: Colors.red,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                              icon: const Icon(
-                                Icons.delete,
-                                color: Colors.red,
-                                size: 20.0,
+                            const SizedBox(width: 12.0),
+                            ElevatedButton(
+                              onPressed: _addNewWaxType,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0,
+                                  vertical: 8.0,
+                                ),
+                                textStyle: textTheme.bodyMedium,
                               ),
-                              tooltip: 'Delete $wax',
+                              child: const Text('Add'),
                             ),
                           ],
                         ),
-                      );
-                    }).toList(),
+                        const SizedBox(height: 15.0),
+                        Container(
+                          decoration: cardDecoration,
+                          child: Column(
+                            children: availableWaxTypes.map((wax) {
+                              return CheckboxListTile(
+                                title: Text(wax, style: textTheme.bodyLarge),
+                                value: _candleData.waxTypes.contains(wax),
+                                onChanged: (checked) {
+                                  setState(() {
+                                    if (checked == true)
+                                      _candleData.waxTypes.add(wax);
+                                    else
+                                      _candleData.waxTypes.remove(wax);
+                                  });
+                                },
+                                activeColor: colorScheme.primary,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                secondary: IconButton(
+                                  onPressed: () => _deleteWaxType(wax),
+                                  icon: Icon(
+                                    Icons.delete_outline,
+                                    color: colorScheme.error,
+                                    size: 22.0,
+                                  ),
+                                  tooltip: 'Delete $wax',
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20.0),
-                // Wicked
-                if (_candleData.candleType == 'Mould' ||
-                    _candleData.candleType == 'Free pour')
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 24.0),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          );
+                        },
+                    child:
+                        (_candleData.candleType == 'Mould' ||
+                            _candleData.candleType == 'Free pour')
+                        ? _buildRadioGroup(
+                            key: const ValueKey('wicked_selection'),
+                            title: 'Wicked',
+                            groupValue: _candleData.isWicked,
+                            onChanged: (value) =>
+                                setState(() => _candleData.isWicked = value),
+                          )
+                        : (_candleData.candleType != null)
+                        ? Container(
+                            key: const ValueKey('wicked_auto'),
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16.0),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            child: RichText(
+                              text: TextSpan(
+                                style: DefaultTextStyle.of(context).style,
+                                children: [
+                                  TextSpan(
+                                    text: 'Wicked: ',
+                                    style: textTheme.titleLarge?.copyWith(
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'Yes',
+                                    style: textTheme.bodyLarge?.copyWith(
+                                      color: colorScheme
+                                          .onSurface, // Or any default
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(
+                            key: const ValueKey('wicked_empty'),
+                          ),
+                  ),
+                  const SizedBox(height: 24.0),
+                  _buildRadioGroup(
+                    title: 'Scented',
+                    groupValue: _candleData.isScented,
+                    onChanged: (value) =>
+                        setState(() => _candleData.isScented = value!),
+                  ),
+                  const SizedBox(height: 24.0),
+                  _buildRadioGroup(
+                    title: 'Coloured',
+                    groupValue: _candleData.isColoured,
+                    onChanged: (value) =>
+                        setState(() => _candleData.isColoured = value!),
+                  ),
+                  const SizedBox(height: 32.0),
+                  Row(
                     children: [
-                      const Text(
-                        'Wicked',
-                        style: TextStyle(
-                          fontSize: 16.0,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                      RadioListTile<bool>(
-                        title: const Text(
-                          'Yes',
-                          style: TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _clearAllData,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: colorScheme.error),
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
+                          ),
+                          child: Text(
+                            'Clear',
+                            style: textTheme.titleLarge?.copyWith(
+                              color: colorScheme.error,
+                            ),
                           ),
                         ),
-                        value: true,
-                        groupValue: _candleData.isWicked,
-                        onChanged: (value) {
-                          setState(() {
-                            _candleData.isWicked = value;
-                          });
-                        },
-                        activeColor: const Color(0xFF795548),
                       ),
-                      RadioListTile<bool>(
-                        title: const Text(
-                          'No',
-                          style: TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
-                          ),
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (_formKey.currentState!.validate() &&
+                                _candleData.waxTypes.isNotEmpty &&
+                                _candleData.isWicked != null &&
+                                _sampleNameError == null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      MakingScreen2(candleData: _candleData),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Please complete all required fields and ensure a unique sample name.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Next'),
                         ),
-                        value: false,
-                        groupValue: _candleData.isWicked,
-                        onChanged: (value) {
-                          setState(() {
-                            _candleData.isWicked = value;
-                          });
-                        },
-                        activeColor: const Color(0xFF795548),
                       ),
                     ],
-                  )
-                else if (_candleData.candleType != null)
-                  Text(
-                    'Wicked: Yes (Auto)',
-                    style: const TextStyle(
-                      fontSize: 14.0,
-                      fontFamily: 'Georgia',
-                      color: Color(0xFF5D4037),
-                    ),
                   ),
-                const SizedBox(height: 20.0),
-                // Scented
-                const Text(
-                  'Scented',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                RadioListTile<bool>(
-                  title: const Text(
-                    'Yes',
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      fontFamily: 'Georgia',
-                      color: Color(0xFF5D4037),
-                    ),
-                  ),
-                  value: true,
-                  groupValue: _candleData.isScented,
-                  onChanged: (value) {
-                    setState(() {
-                      _candleData.isScented = value!;
-                    });
-                  },
-                  activeColor: const Color(0xFF795548),
-                ),
-                RadioListTile<bool>(
-                  title: const Text(
-                    'No',
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      fontFamily: 'Georgia',
-                      color: Color(0xFF5D4037),
-                    ),
-                  ),
-                  value: false,
-                  groupValue: _candleData.isScented,
-                  onChanged: (value) {
-                    setState(() {
-                      _candleData.isScented = value!;
-                    });
-                  },
-                  activeColor: const Color(0xFF795548),
-                ),
-                const SizedBox(height: 20.0),
-                // Coloured
-                const Text(
-                  'Coloured',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                RadioListTile<bool>(
-                  title: const Text(
-                    'Yes',
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      fontFamily: 'Georgia',
-                      color: Color(0xFF5D4037),
-                    ),
-                  ),
-                  value: true,
-                  groupValue: _candleData.isColoured,
-                  onChanged: (value) {
-                    setState(() {
-                      _candleData.isColoured = value!;
-                    });
-                  },
-                  activeColor: const Color(0xFF795548),
-                ),
-                RadioListTile<bool>(
-                  title: const Text(
-                    'No',
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      fontFamily: 'Georgia',
-                      color: Color(0xFF5D4037),
-                    ),
-                  ),
-                  value: false,
-                  groupValue: _candleData.isColoured,
-                  onChanged: (value) {
-                    setState(() {
-                      _candleData.isColoured = value!;
-                    });
-                  },
-                  activeColor: const Color(0xFF795548),
-                ),
-                const SizedBox(height: 20.0),
-                // Next Button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Clear Button
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _clearAllData,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red, // Red button
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 40.0,
-                            vertical: 16.0,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                          minimumSize: const Size.fromHeight(50.0),
-                        ),
-                        child: const Text(
-                          'Clear',
-                          style: TextStyle(
-                            fontSize: 20.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16.0), // Space between buttons
-                    // Next Button
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate() &&
-                              _candleData.waxTypes.isNotEmpty &&
-                              (_candleData.isWicked != null ||
-                                  _candleData.candleType == 'Container' ||
-                                  _candleData.candleType == 'Pillar') &&
-                              _candleData.sampleName != null &&
-                              _candleData.sampleName!.isNotEmpty) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    MakingScreen2(candleData: _candleData),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please complete all fields'),
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF795548), // Brown
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 40.0,
-                            vertical: 16.0,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                          minimumSize: const Size.fromHeight(50.0),
-                        ),
-                        child: const Text(
-                          'Next',
-                          style: TextStyle(
-                            fontSize: 20.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRadioGroup({
+    Key? key,
+    required String title,
+    required bool? groupValue,
+    required ValueChanged<bool?> onChanged,
+  }) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      child: Column(
+        key: key,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: textTheme.titleLarge),
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: Text('Yes', style: textTheme.bodyLarge),
+                  value: true,
+                  groupValue: groupValue,
+                  onChanged: onChanged,
+                  activeColor: colorScheme.primary,
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<bool>(
+                  title: Text('No', style: textTheme.bodyLarge),
+                  value: false,
+                  groupValue: groupValue,
+                  onChanged: onChanged,
+                  activeColor: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../models/candle_data.dart';
 import '../services/notification_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import 'dart:async';
 
 class MakingScreen9 extends StatefulWidget {
   final CandleData candleData;
@@ -17,6 +18,20 @@ class MakingScreen9 extends StatefulWidget {
 }
 
 class _MakingScreen9State extends State<MakingScreen9> {
+  bool _isContentVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isContentVisible = true;
+        });
+      }
+    });
+  }
+
   Stream<DateTime> _dateTimeStream() async* {
     while (true) {
       yield DateTime.now();
@@ -36,29 +51,28 @@ class _MakingScreen9State extends State<MakingScreen9> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF795548),
-        title: const Text(
-          'Making - Batch Output',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
-        ),
+        title: const Text('Making - Batch Output'),
         leading: Builder(
           builder: (context) => StreamBuilder<int>(
             stream: NotificationService.unreadCountStream,
             builder: (context, snapshot) {
               final unreadCount = snapshot.data ?? 0;
               return Stack(
+                alignment: Alignment.center,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white),
+                    icon: const Icon(Icons.menu),
                     onPressed: () => Scaffold.of(context).openDrawer(),
                   ),
                   if (unreadCount > 0)
                     Positioned(
-                      right: 8,
-                      top: 8,
+                      right: 10,
+                      top: 10,
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
@@ -70,11 +84,10 @@ class _MakingScreen9State extends State<MakingScreen9> {
                           minHeight: 16,
                         ),
                         child: Text(
-                          unreadCount > 99 ? '99+' : unreadCount.toString(),
+                          unreadCount.toString(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,
-                            fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -90,11 +103,6 @@ class _MakingScreen9State extends State<MakingScreen9> {
             stream: _dateTimeStream(),
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
-              final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a');
-              final formattedDate = dateFormatter.format(now);
-              final formattedTime = timeFormatter.format(now);
-
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Column(
@@ -102,19 +110,19 @@ class _MakingScreen9State extends State<MakingScreen9> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formattedDate,
+                      DateFormat('MMM d, yyyy').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      formattedTime,
+                      DateFormat('h:mm a').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -128,267 +136,169 @@ class _MakingScreen9State extends State<MakingScreen9> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF5D4037).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Sample: ${widget.candleData.sampleName ?? "Unknown"}',
-                      style: const TextStyle(
-                        fontSize: 18.0,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Georgia',
-                        color: Color(0xFF5D4037),
-                      ),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Text(
-                      'Candle Type: ${widget.candleData.candleType ?? "Unknown"}',
-                      style: const TextStyle(
-                        fontSize: 16.0,
-                        fontFamily: 'Georgia',
-                        color: Color(0xFF5D4037),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20.0),
-              const Text(
-                'Cost Breakdown (Per Candle)',
-                style: TextStyle(
-                  fontSize: 20.0,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Georgia',
-                  color: Color(0xFF5D4037),
-                ),
-              ),
-              const SizedBox(height: 16.0),
-              Card(
-                elevation: 3.0,
-                child: Padding(
+          child: AnimatedOpacity(
+            opacity: _isContentVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeIn,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Wax Cost
-                      _buildCostRow(
-                        label: 'Wax Cost',
-                        cost: widget.candleData.waxDetails.fold(
-                          0.0,
-                          (sum, wax) =>
-                              sum +
-                              (wax.cost /
-                                  (widget.candleData.candleType == 'Container'
-                                      ? (widget
-                                                .candleData
-                                                .containerDetail
-                                                ?.numberOfContainers ??
-                                            1)
-                                      : widget.candleData.candleType == 'Pillar'
-                                      ? (widget
-                                                .candleData
-                                                .pillarDetail
-                                                ?.numberOfPillars ??
-                                            1)
-                                      : widget.candleData.candleType == 'Mould'
-                                      ? (widget
-                                                .candleData
-                                                .mouldDetail
-                                                ?.number ??
-                                            1)
-                                      : 1)),
+                      Text(
+                        'Sample Name: ${widget.candleData.sampleName ?? "N/A"}',
+                        style: textTheme.titleLarge?.copyWith(
+                          color: colorScheme.primary,
                         ),
                       ),
-                      // Container Cost
-                      if (widget.candleData.candleType == 'Container' &&
-                          widget.candleData.containerDetail != null)
-                        _buildCostRow(
-                          label: 'Container Cost',
-                          cost:
-                              widget.candleData.containerDetail!.cost /
-                              (widget
-                                          .candleData
-                                          .containerDetail!
-                                          .numberOfContainers >
-                                      0
-                                  ? widget
-                                        .candleData
-                                        .containerDetail!
-                                        .numberOfContainers
-                                  : 1),
-                        ),
-                      // Wick and Wick Sticker Costs
-                      if ((widget.candleData.isWicked == true ||
-                              widget.candleData.candleType == 'Container' ||
-                              widget.candleData.candleType == 'Pillar') &&
-                          widget.candleData.wickDetail != null) ...[
-                        _buildCostRow(
-                          label: 'Wick Cost',
-                          cost:
-                              widget.candleData.wickDetail!.wickCost /
-                              (widget.candleData.candleType == 'Container'
-                                  ? (widget
-                                            .candleData
-                                            .containerDetail
-                                            ?.numberOfContainers ??
-                                        1)
-                                  : widget.candleData.candleType == 'Pillar'
-                                  ? (widget
-                                            .candleData
-                                            .pillarDetail
-                                            ?.numberOfPillars ??
-                                        1)
-                                  : widget.candleData.candleType == 'Mould'
-                                  ? (widget.candleData.mouldDetail?.number ?? 1)
-                                  : 1),
-                        ),
-                        _buildCostRow(
-                          label: 'Wick Sticker Cost',
-                          cost:
-                              widget.candleData.wickDetail!.stickerCost /
-                              (widget.candleData.candleType == 'Container'
-                                  ? (widget
-                                            .candleData
-                                            .containerDetail
-                                            ?.numberOfContainers ??
-                                        1)
-                                  : widget.candleData.candleType == 'Pillar'
-                                  ? (widget
-                                            .candleData
-                                            .pillarDetail
-                                            ?.numberOfPillars ??
-                                        1)
-                                  : widget.candleData.candleType == 'Mould'
-                                  ? (widget.candleData.mouldDetail?.number ?? 1)
-                                  : 1),
-                        ),
-                      ],
-                      // Fragrance Cost
-                      if (widget.candleData.isScented &&
-                          widget.candleData.scentDetail != null)
-                        _buildCostRow(
-                          label: 'Fragrance Cost',
-                          cost:
-                              widget.candleData.scentDetail!.cost /
-                              (widget.candleData.candleType == 'Container'
-                                  ? (widget
-                                            .candleData
-                                            .containerDetail
-                                            ?.numberOfContainers ??
-                                        1)
-                                  : widget.candleData.candleType == 'Pillar'
-                                  ? (widget
-                                            .candleData
-                                            .pillarDetail
-                                            ?.numberOfPillars ??
-                                        1)
-                                  : widget.candleData.candleType == 'Mould'
-                                  ? (widget.candleData.mouldDetail?.number ?? 1)
-                                  : 1),
-                        ),
-                      // Colour Cost
-                      if (widget.candleData.isColoured &&
-                          widget.candleData.colourDetail != null)
-                        _buildCostRow(
-                          label: 'Colour Cost',
-                          cost:
-                              widget.candleData.colourDetail!.cost /
-                              (widget.candleData.candleType == 'Container'
-                                  ? (widget
-                                            .candleData
-                                            .containerDetail
-                                            ?.numberOfContainers ??
-                                        1)
-                                  : widget.candleData.candleType == 'Pillar'
-                                  ? (widget
-                                            .candleData
-                                            .pillarDetail
-                                            ?.numberOfPillars ??
-                                        1)
-                                  : widget.candleData.candleType == 'Mould'
-                                  ? (widget.candleData.mouldDetail?.number ?? 1)
-                                  : 1),
-                        ),
-                      // Divider
-                      const Divider(height: 20.0, thickness: 1.0),
-                      // Total Cost
-                      _buildCostRow(
-                        label: 'Total Cost',
-                        cost: widget.candleData.totalCost ?? 0.0,
-                        isTotal: true,
+                      const SizedBox(height: 4.0),
+                      Text(
+                        'Candle Type: ${widget.candleData.candleType ?? "N/A"}',
+                        style: textTheme.titleMedium,
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 30.0),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[600],
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30.0),
+                const SizedBox(height: 24.0),
+
+                _buildOutputCard(),
+
+                const SizedBox(height: 32.0),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.primary),
+                          shape: const StadiumBorder(),
+                          padding: const EdgeInsets.symmetric(vertical: 14.0),
                         ),
-                      ),
-                      child: const Text(
-                        'Back',
-                        style: TextStyle(
-                          fontSize: 18.0,
-                          color: Colors.white,
-                          fontFamily: 'Georgia',
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16.0),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const HomeScreen(),
+                        child: Text(
+                          'Back',
+                          style: TextStyle(
+                            fontSize: 22,
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.bold,
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF795548),
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                      ),
-                      child: const Text(
-                        'Done',
-                        style: TextStyle(
-                          fontSize: 18.0,
-                          color: Colors.white,
-                          fontFamily: 'Georgia',
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 16.0),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HomeScreen(),
+                            ),
+                            (Route<dynamic> route) => false,
+                          );
+                        },
+                        child: const Text('Done'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormCard({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16.0),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
+          child: child,
         ),
+      ],
+    );
+  }
+
+  Widget _buildOutputCard() {
+    int numberOfCandles = 1;
+    final candleType = widget.candleData.candleType;
+    if (candleType == 'Container') {
+      numberOfCandles =
+          widget.candleData.containerDetail?.numberOfContainers ?? 1;
+    } else if (candleType == 'Pillar') {
+      numberOfCandles = widget.candleData.pillarDetail?.numberOfPillars ?? 1;
+    } else if (candleType == 'Mould') {
+      numberOfCandles = widget.candleData.mouldDetail?.number ?? 1;
+    }
+    if (numberOfCandles == 0) numberOfCandles = 1; // Avoid division by zero
+
+    return _buildFormCard(
+      title: 'Cost Breakdown (Per Candle)',
+      child: Column(
+        children: [
+          _buildCostRow(
+            label: 'Wax Cost',
+            cost:
+                widget.candleData.waxDetails.fold(
+                  0.0,
+                  (sum, wax) => sum + wax.cost,
+                ) /
+                numberOfCandles,
+          ),
+          if (widget.candleData.containerDetail != null)
+            _buildCostRow(
+              label: 'Container Cost',
+              cost: widget.candleData.containerDetail!.cost / numberOfCandles,
+            ),
+          if (widget.candleData.wickDetail != null) ...[
+            _buildCostRow(
+              label: 'Wick Cost',
+              cost: widget.candleData.wickDetail!.wickCost / numberOfCandles,
+            ),
+            _buildCostRow(
+              label: 'Wick Sticker Cost',
+              cost: widget.candleData.wickDetail!.stickerCost / numberOfCandles,
+            ),
+          ],
+          if (widget.candleData.scentDetail != null)
+            _buildCostRow(
+              label: 'Fragrance Cost',
+              cost: widget.candleData.scentDetail!.cost / numberOfCandles,
+            ),
+          if (widget.candleData.colourDetail != null)
+            _buildCostRow(
+              label: 'Colour Cost',
+              cost: widget.candleData.colourDetail!.cost / numberOfCandles,
+            ),
+          const Divider(height: 20.0, thickness: 1.0),
+          _buildCostRow(
+            label: 'Total Cost',
+            cost: (widget.candleData.totalCost ?? 0.0) / numberOfCandles,
+            isTotal: true,
+          ),
+        ],
       ),
     );
   }
@@ -398,6 +308,7 @@ class _MakingScreen9State extends State<MakingScreen9> {
     required double cost,
     bool isTotal = false,
   }) {
+    final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -405,21 +316,11 @@ class _MakingScreen9State extends State<MakingScreen9> {
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 16.0,
-              fontFamily: 'Georgia',
-              color: const Color(0xFF5D4037),
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            ),
+            style: isTotal ? textTheme.titleMedium : textTheme.bodyLarge,
           ),
           Text(
             '\$${cost.toStringAsFixed(2)}',
-            style: TextStyle(
-              fontSize: 16.0,
-              fontFamily: 'Georgia',
-              color: const Color(0xFF5D4037),
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            ),
+            style: isTotal ? textTheme.titleMedium : textTheme.bodyLarge,
           ),
         ],
       ),

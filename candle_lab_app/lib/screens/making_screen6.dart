@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'custom_drawer.dart';
 import 'making_screen7.dart';
 import '../models/candle_data.dart';
+import 'dart:async';
 
 class MakingScreen6 extends StatefulWidget {
   final CandleData candleData;
@@ -16,12 +17,13 @@ class MakingScreen6 extends StatefulWidget {
 
 class _MakingScreen6State extends State<MakingScreen6> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _colourController = TextEditingController();
-  final TextEditingController _supplierController = TextEditingController();
-  final TextEditingController _weightController = TextEditingController();
-  final TextEditingController _costController = TextEditingController();
-  final TextEditingController _percentageController = TextEditingController();
-  double _percentage = 0.0;
+  final _colourController = TextEditingController();
+  final _supplierController = TextEditingController();
+  final _weightController = TextEditingController();
+  final _costController = TextEditingController();
+  final _percentageController = TextEditingController();
+
+  bool _isContentVisible = false;
 
   @override
   void initState() {
@@ -29,6 +31,14 @@ class _MakingScreen6State extends State<MakingScreen6> {
     _initializeData();
     _updatePercentage();
     _weightController.addListener(_updatePercentage);
+
+    Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isContentVisible = true;
+        });
+      }
+    });
   }
 
   void _initializeData() {
@@ -38,43 +48,56 @@ class _MakingScreen6State extends State<MakingScreen6> {
       _supplierController.text = colour.supplier;
       _weightController.text = colour.weight.toString();
       _costController.text = colour.cost.toString();
-      _percentage = colour.percentage;
     }
   }
 
   void _updatePercentage() {
-    setState(() {
-      double colourWeight = double.tryParse(_weightController.text) ?? 0.0;
-      double totalWaxWeight = widget.candleData.waxDetails.fold(
-        0.0,
-        (sum, detail) => sum + detail.weight,
-      );
-      _percentage = totalWaxWeight > 0
-          ? (colourWeight / totalWaxWeight) * 100
-          : 0.0;
+    double colourWeight = double.tryParse(_weightController.text) ?? 0.0;
+    double scentWeight = widget.candleData.scentDetail?.weight ?? 0.0;
+    double totalWaxWeight = widget.candleData.waxDetails.fold(
+      0.0,
+      (sum, detail) => sum + detail.weight,
+    );
+    double percentage = totalWaxWeight > 0
+        ? (colourWeight / (scentWeight + colourWeight + totalWaxWeight)) * 100
+        : 0.0;
 
-      _percentageController.text = _percentage.toStringAsFixed(2);
-    });
+    if (mounted) {
+      setState(() {
+        _percentageController.text = percentage.toStringAsFixed(2);
+      });
+    }
   }
 
   @override
   void dispose() {
+    _weightController.removeListener(_updatePercentage);
     _colourController.dispose();
     _supplierController.dispose();
-    _weightController.removeListener(_updatePercentage);
     _weightController.dispose();
     _costController.dispose();
     _percentageController.dispose();
     super.dispose();
   }
 
-  void _saveData() {
+  void _saveDataAndNavigate() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     widget.candleData.colourDetail = ColourDetail(
       colour: _colourController.text,
       supplier: _supplierController.text,
       weight: double.tryParse(_weightController.text) ?? 0.0,
-      percentage: _percentage,
+      percentage: double.tryParse(_percentageController.text) ?? 0.0,
       cost: double.tryParse(_costController.text) ?? 0.0,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MakingScreen7(candleData: widget.candleData),
+      ),
     );
   }
 
@@ -87,30 +110,17 @@ class _MakingScreen6State extends State<MakingScreen6> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF795548), // Brown
-        title: const Text(
-          'Making - Colour Details',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
-        ),
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
+        title: const Text('Making - Colour Details'),
         actions: [
           StreamBuilder<DateTime>(
             stream: _dateTimeStream(),
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
-              final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a'); // 12-hour format
-              final formattedDate = dateFormatter.format(now);
-              final formattedTime = timeFormatter.format(now);
-
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Column(
@@ -118,19 +128,19 @@ class _MakingScreen6State extends State<MakingScreen6> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formattedDate,
+                      DateFormat('MMM d, yyyy').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      formattedTime,
+                      DateFormat('h:mm a').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -144,255 +154,174 @@ class _MakingScreen6State extends State<MakingScreen6> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5D4037).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sample: ${widget.candleData.sampleName}',
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        'Candle Type: ${widget.candleData.candleType}',
-                        style: const TextStyle(
-                          fontSize: 16.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20.0),
-                const Text(
-                  'Colour Details',
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Card(
-                  elevation: 3.0,
-                  child: Padding(
+          child: AnimatedOpacity(
+            opacity: _isContentVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeIn,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
                     child: Column(
                       children: [
-                        TextFormField(
-                          controller: _colourController,
-                          decoration: const InputDecoration(
-                            labelText: 'Colour',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Colour is required';
-                            }
-                            return null;
-                          },
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
+                        Text(
+                          'Sample Name: ${widget.candleData.sampleName}',
+                          style: textTheme.titleLarge?.copyWith(
+                            color: colorScheme.primary,
                           ),
                         ),
-                        const SizedBox(height: 16.0),
-                        TextFormField(
-                          controller: _supplierController,
-                          decoration: const InputDecoration(
-                            labelText: 'Supplier',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Supplier is required';
-                            }
-                            return null;
-                          },
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
-                          ),
-                        ),
-                        const SizedBox(height: 16.0),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _weightController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Weight (g)',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}'),
-                                  ),
-                                ],
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Required';
-                                  }
-                                  if (double.tryParse(value) == null ||
-                                      double.parse(value) <= 0) {
-                                    return 'Invalid weight';
-                                  }
-                                  return null;
-                                },
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12.0),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _percentageController,
-                                readOnly: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Percentage (%)',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Color(0xFFE0E0E0),
-                                ),
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16.0),
-                        TextFormField(
-                          controller: _costController,
-                          decoration: const InputDecoration(
-                            labelText: 'Cost (\$)',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d+\.?\d{0,2}'),
-                            ),
-                          ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Required';
-                            }
-                            if (double.tryParse(value) == null ||
-                                double.parse(value) < 0) {
-                              return 'Invalid cost';
-                            }
-                            return null;
-                          },
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
-                          ),
+                        const SizedBox(height: 4.0),
+                        Text(
+                          'Candle Type: ${widget.candleData.candleType}',
+                          style: textTheme.titleMedium,
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 30.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
+                  const SizedBox(height: 24.0),
+
+                  _buildColourForm(),
+
+                  const SizedBox(height: 32.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: colorScheme.primary),
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
                           ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _saveData();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MakingScreen7(
-                                  candleData: widget.candleData,
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF795548),
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Next',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
+                          child: Text(
+                            'Back',
+                            style: TextStyle(
+                              fontSize: 22,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _saveDataAndNavigate,
+                          child: const Text('Next'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFormCard({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16.0),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildColourForm() {
+    return _buildFormCard(
+      title: 'Colour Details',
+      child: Column(
+        children: [
+          _buildTextFormField(controller: _colourController, label: 'Colour'),
+          const SizedBox(height: 12),
+          _buildTextFormField(
+            controller: _supplierController,
+            label: 'Supplier',
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _weightController,
+                  label: 'Weight (g)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _percentageController,
+                  label: 'Percentage (%)',
+                  readOnly: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildTextFormField(
+            controller: _costController,
+            label: 'Cost (\$)',
+            keyboardType: TextInputType.number,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      decoration: InputDecoration(
+        labelText: label,
+        fillColor: readOnly ? Colors.black.withOpacity(0.05) : null,
+      ),
+      keyboardType: keyboardType,
+      inputFormatters: keyboardType == TextInputType.number
+          ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))]
+          : [],
+      validator: (value) {
+        if (readOnly) return null;
+        if (value == null || value.isEmpty) return 'Required';
+        if (keyboardType == TextInputType.number &&
+            (double.tryParse(value) == null || double.parse(value) < 0)) {
+          return 'Invalid';
+        }
+        return null;
+      },
     );
   }
 }

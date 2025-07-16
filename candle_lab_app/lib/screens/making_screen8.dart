@@ -8,6 +8,7 @@ import '../models/candle_data.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 import 'login_screen.dart';
+import 'dart:async';
 
 class MakingScreen8 extends StatefulWidget {
   final CandleData candleData;
@@ -20,20 +21,29 @@ class MakingScreen8 extends StatefulWidget {
 
 class _MakingScreen8State extends State<MakingScreen8> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _coolDownController = TextEditingController();
-  final TextEditingController _curingController = TextEditingController();
-  final TextEditingController _burningDayController = TextEditingController();
-  bool _isSaving = false;
+  final _coolDownController = TextEditingController();
+  final _curingController = TextEditingController();
+  final _burningDayController = TextEditingController();
 
+  bool _isSaving = false;
   TimeOfDay? _selectedReminderTime;
   List<String> _photoPaths = [];
   DateTime? _calculatedBurningDay;
+  bool _isContentVisible = false;
 
   @override
   void initState() {
     super.initState();
     _initializeData();
     _curingController.addListener(_updateBurningDay);
+
+    Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isContentVisible = true;
+        });
+      }
+    });
   }
 
   void _initializeData() {
@@ -71,12 +81,6 @@ class _MakingScreen8State extends State<MakingScreen8> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: _selectedReminderTime ?? TimeOfDay.now(),
-      builder: (BuildContext context, Widget? child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null) {
@@ -101,39 +105,50 @@ class _MakingScreen8State extends State<MakingScreen8> {
     });
   }
 
-  Future<void> _saveData() async {
-    if (_isSaving) return;
+  Future<void> _saveDataAndNavigate() async {
+    if (_isSaving || !_formKey.currentState!.validate()) return;
+
     setState(() => _isSaving = true);
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please log in to save data')),
+        );
+      }
       setState(() => _isSaving = false);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in to save data')),
-      );
       return;
     }
 
-    final curingDays = int.tryParse(_curingController.text) ?? 0;
-    final coolDownTime = double.tryParse(_coolDownController.text) ?? 0.0;
-
+    // Update cooling and curing details
     widget.candleData.coolingCuringDetail = CoolingCuringDetail(
-      coolDownTime: coolDownTime,
-      curingDays: curingDays,
+      coolDownTime: double.tryParse(_coolDownController.text) ?? 0.0,
+      curingDays: int.tryParse(_curingController.text) ?? 0,
       burningDay: _calculatedBurningDay,
       reminderTime: _selectedReminderTime,
       photoPaths: _photoPaths,
     );
 
+    // Nullify details if their respective flags are false
+    if (widget.candleData.isScented == false) {
+      widget.candleData.scentDetail = null;
+    }
+    if (widget.candleData.isWicked == false) {
+      widget.candleData.wickDetail = null;
+    }
+    if (widget.candleData.isColoured == false) {
+      widget.candleData.colourDetail = null;
+    }
+
     widget.candleData.totalCost = widget.candleData.calculateTotalCost();
 
     try {
-      final firestoreService = FirestoreService();
-      await firestoreService.saveCandleData(widget.candleData);
+      await FirestoreService().saveCandleData(widget.candleData);
 
       if (_calculatedBurningDay != null && _selectedReminderTime != null) {
         final reminderDateTime = DateTime(
@@ -153,23 +168,13 @@ class _MakingScreen8State extends State<MakingScreen8> {
               'Your candle "${widget.candleData.sampleName}" is ready for burning.',
           scheduledDate: reminderDateTime,
           candleName: widget.candleData.sampleName ?? 'Unknown Candle',
-          candleType:
-              widget.candleData.candleType ?? 'Unknown', // Pass candleType
+          candleType: widget.candleData.candleType ?? 'Unknown',
         );
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Candle data and notification saved successfully'),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error saving data: $e')));
-    } finally {
-      setState(() => _isSaving = false);
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Candle data saved successfully')),
+        );
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -177,6 +182,13 @@ class _MakingScreen8State extends State<MakingScreen8> {
           ),
         );
       }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving data: $e')));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -189,6 +201,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
 
   @override
   void dispose() {
+    _curingController.removeListener(_updateBurningDay);
     _coolDownController.dispose();
     _curingController.dispose();
     _burningDayController.dispose();
@@ -197,65 +210,17 @@ class _MakingScreen8State extends State<MakingScreen8> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF795548),
-        title: const Text(
-          'Making - Cooling & Curing',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
-        ),
-        leading: Builder(
-          builder: (context) => StreamBuilder<int>(
-            stream: NotificationService.unreadCountStream,
-            builder: (context, snapshot) {
-              final unreadCount = snapshot.data ?? 0;
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.menu, color: Colors.white),
-                    onPressed: () => Scaffold.of(context).openDrawer(),
-                  ),
-                  if (unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 16,
-                          minHeight: 16,
-                        ),
-                        child: Text(
-                          unreadCount > 99 ? '99+' : unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ),
+        title: const Text('Making - Cooling & Curing'),
         actions: [
           StreamBuilder<DateTime>(
             stream: _dateTimeStream(),
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
-              final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a');
-              final formattedDate = dateFormatter.format(now);
-              final formattedTime = timeFormatter.format(now);
-
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Column(
@@ -263,19 +228,19 @@ class _MakingScreen8State extends State<MakingScreen8> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formattedDate,
+                      DateFormat('MMM d, yyyy').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      formattedTime,
+                      DateFormat('h:mm a').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -289,297 +254,217 @@ class _MakingScreen8State extends State<MakingScreen8> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5D4037).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.0),
+          child: AnimatedOpacity(
+            opacity: _isContentVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeIn,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Sample Name: ${widget.candleData.sampleName}',
+                          style: textTheme.titleLarge?.copyWith(
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4.0),
+                        Text(
+                          'Candle Type: ${widget.candleData.candleType}',
+                          style: textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 24.0),
+
+                  _buildCoolingForm(),
+
+                  const SizedBox(height: 32.0),
+                  Row(
                     children: [
-                      Text(
-                        'Sample: ${widget.candleData.sampleName}',
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: colorScheme.primary),
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
+                          ),
+                          child: Text(
+                            'Back',
+                            style: TextStyle(
+                              fontSize: 22,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        'Candle Type: ${widget.candleData.candleType}',
-                        style: const TextStyle(
-                          fontSize: 16.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isSaving ? null : _saveDataAndNavigate,
+                          child: _isSaving
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : const Text('Next'),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 20.0),
-                const Text(
-                  'Cooling & Curing Details',
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Card(
-                  elevation: 3.0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        TextFormField(
-                          controller: _coolDownController,
-                          decoration: const InputDecoration(
-                            labelText: 'Cool Down Time (h)',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d*\.?\d{0,2}'),
-                            ),
-                          ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Required';
-                            }
-                            if (double.tryParse(value) == null) {
-                              return 'Invalid number';
-                            }
-                            return null;
-                          },
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
-                          ),
-                        ),
-                        const SizedBox(height: 16.0),
-                        TextFormField(
-                          controller: _curingController,
-                          decoration: const InputDecoration(
-                            labelText: 'Curing (days)',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Required';
-                            }
-                            if (int.tryParse(value) == null) {
-                              return 'Invalid number';
-                            }
-                            return null;
-                          },
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
-                          ),
-                        ),
-                        const SizedBox(height: 16.0),
-                        TextFormField(
-                          controller: _burningDayController,
-                          decoration: const InputDecoration(
-                            labelText: 'Burning Day',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          readOnly: true,
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
-                          ),
-                        ),
-                        const SizedBox(height: 16.0),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(12.0),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey),
-                                  borderRadius: BorderRadius.circular(4.0),
-                                  color: Colors.white,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      _selectedReminderTime != null
-                                          ? 'Reminder: ${_selectedReminderTime!.format(context)}'
-                                          : 'No reminder set',
-                                      style: const TextStyle(
-                                        fontSize: 14.0,
-                                        fontFamily: 'Georgia',
-                                        color: Color(0xFF5D4037),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: _selectReminderTime,
-                                      icon: const Icon(Icons.access_time),
-                                      color: const Color(0xFF795548),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16.0),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _addPhoto,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF795548),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16.0,
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Add Photo',
-                                  style: TextStyle(
-                                    fontSize: 14.0,
-                                    fontFamily: 'Georgia',
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (_photoPaths.isNotEmpty) ...[
-                          const SizedBox(height: 16.0),
-                          const Text(
-                            'Photos',
-                            style: TextStyle(
-                              fontSize: 16.0,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Georgia',
-                              color: Color(0xFF5D4037),
-                            ),
-                          ),
-                          const SizedBox(height: 8.0),
-                          Wrap(
-                            spacing: 8.0,
-                            runSpacing: 8.0,
-                            children: _photoPaths.map((path) {
-                              return Chip(
-                                label: Text(
-                                  path,
-                                  style: const TextStyle(
-                                    fontSize: 14.0,
-                                    fontFamily: 'Georgia',
-                                    color: Color(0xFF5D4037),
-                                  ),
-                                ),
-                                deleteIcon: const Icon(Icons.cancel, size: 18),
-                                onDeleted: () => _removePhoto(path),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isSaving
-                            ? null
-                            : () async {
-                                if (_formKey.currentState!.validate()) {
-                                  await _saveData();
-                                }
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _isSaving
-                              ? Colors.grey
-                              : const Color(0xFF795548),
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.0,
-                                ),
-                              )
-                            : const Text(
-                                'Next',
-                                style: TextStyle(
-                                  fontSize: 18.0,
-                                  color: Colors.white,
-                                  fontFamily: 'Georgia',
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFormCard({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16.0),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCoolingForm() {
+    return _buildFormCard(
+      title: 'Cooling & Curing Details',
+      child: Column(
+        children: [
+          _buildTextFormField(
+            controller: _coolDownController,
+            label: 'Cool Down Time (h)',
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          _buildTextFormField(
+            controller: _curingController,
+            label: 'Curing (days)',
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          _buildTextFormField(
+            controller: _burningDayController,
+            label: 'Burning Day',
+            readOnly: true,
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: _selectReminderTime,
+            child: InputDecorator(
+              decoration: const InputDecoration(labelText: 'Reminder Time'),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _selectedReminderTime != null
+                        ? _selectedReminderTime!.format(context)
+                        : 'Set a time',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  Icon(
+                    Icons.access_time_outlined,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _addPhoto,
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: const Text('Add Photo'),
+            ),
+          ),
+          if (_photoPaths.isNotEmpty) ...[
+            const SizedBox(height: 16.0),
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: _photoPaths.map((path) {
+                return Chip(
+                  label: Text(path),
+                  onDeleted: () => _removePhoto(path),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withOpacity(0.1),
+                  deleteIconColor: Theme.of(context).colorScheme.primary,
+                  labelStyle: Theme.of(context).textTheme.bodyMedium,
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      readOnly: readOnly,
+      decoration: InputDecoration(
+        labelText: label,
+        fillColor: readOnly ? Colors.black.withOpacity(0.05) : null,
+      ),
+      keyboardType: keyboardType,
+      inputFormatters: keyboardType == TextInputType.number
+          ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))]
+          : [],
+      validator: (value) {
+        if (readOnly) return null;
+        if (value == null || value.isEmpty) return 'Required';
+        if (keyboardType == TextInputType.number &&
+            (double.tryParse(value) == null || double.parse(value) < 0)) {
+          return 'Invalid';
+        }
+        return null;
+      },
     );
   }
 }

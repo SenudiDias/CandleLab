@@ -19,7 +19,99 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Candle Lab',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        // 1. Set the default font family for the entire app.
+        // Make sure the name matches the 'family' you defined in pubspec.yaml.
+        fontFamily: 'ThSarabunNew',
+
+        // 2. Set the background color.
+        scaffoldBackgroundColor: const Color(0xFFF5F5DC), // Beige
+        // 3. Define a consistent color scheme based on the brown shades.
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF795548), // Brown
+          primary: const Color(0xFF795548), // Main interactive color
+          secondary: const Color(0xFF5D4037), // Darker brown for text/elements
+          background: const Color(0xFFF5F5DC), // Beige
+          surface: Colors.white, // Card/dialog backgrounds
+          onPrimary: Colors.white, // Text/icons on primary color
+          onSecondary: Colors.white, // Text/icons on secondary color
+          onBackground: const Color(0xFF5D4037), // Text on beige background
+          onSurface: const Color(0xFF5D4037), // Text on cards/dialogs
+          error: Colors.redAccent,
+          onError: Colors.white,
+        ),
+
+        // 4. Define a global style for AppBars.
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF795548), // Brown
+          foregroundColor: Colors.white, // For title, icons
+          elevation: 2,
+          titleTextStyle: TextStyle(
+            fontFamily: 'ThSarabunNew',
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+
+        // 5. Define a global style for TextFormFields and Dropdowns.
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16.0,
+            vertical: 12.0,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: Color(0xFF795548), width: 2.0),
+          ),
+          labelStyle: const TextStyle(color: Color(0xFF5D4037), fontSize: 18),
+        ),
+
+        // 6. Define a global style for ElevatedButtons.
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF795548), // Primary brown
+            foregroundColor: Colors.white, // Text color
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30.0),
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 30.0,
+              vertical: 14.0,
+            ),
+            textStyle: const TextStyle(
+              fontFamily: 'ThSarabunNew',
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+
+        // 7. Define default text styles.
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(
+            fontSize: 22.0,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF5D4037),
+          ),
+          titleMedium: TextStyle(
+            fontSize: 18.0,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF5D4037),
+          ),
+          bodyLarge: TextStyle(fontSize: 18.0, color: Color(0xFF5D4037)),
+          bodyMedium: TextStyle(fontSize: 16.0, color: Color(0xFF5D4037)),
+        ),
+
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: StreamBuilder<User?>(

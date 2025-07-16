@@ -9,7 +9,8 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoginMode = true;
@@ -54,10 +55,27 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  late final AnimationController _flickerController;
+  late final Animation<double> _flickerAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _flickerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _flickerAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _flickerController, curve: Curves.easeInOut),
+    );
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _flickerController.dispose();
     super.dispose();
   }
 
@@ -73,16 +91,26 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Title
-              const Text(
-                'Candle Lab',
-                style: TextStyle(
-                  fontSize: 48.0,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Georgia',
-                  color: Color(0xFF5D4037), // Deep brown
+              AnimatedBuilder(
+                animation: _flickerAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _flickerAnimation.value,
+                    child: child,
+                  );
+                },
+                child: const Text(
+                  'Candle Lab',
+                  style: TextStyle(
+                    fontSize: 80.0,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'ThSarabunNew',
+                    color: Color(0xFF5D4037), // Deep brown
+                  ),
                 ),
               ),
-              const SizedBox(height: 16.0),
+
+              const SizedBox(height: 0.0),
               // Subtitle
               const Text(
                 'Craft, Test, Perfect.',

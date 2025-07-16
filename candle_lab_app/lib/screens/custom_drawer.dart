@@ -7,120 +7,167 @@ import 'login_screen.dart';
 import 'notifications_screen.dart';
 import '../services/notification_service.dart';
 
-class CustomDrawer extends StatelessWidget {
+class CustomDrawer extends StatefulWidget {
   final String currentRoute;
 
   const CustomDrawer({super.key, required this.currentRoute});
 
   @override
+  State<CustomDrawer> createState() => _CustomDrawerState();
+}
+
+class _CustomDrawerState extends State<CustomDrawer>
+    with SingleTickerProviderStateMixin {
+  bool _isContentVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _isContentVisible = true;
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Drawer(
       child: Container(
-        color: const Color(0xFFF5F5DC), // Beige background
+        color: colorScheme.background,
         child: Column(
           children: [
-            // User details header
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(
-                color: Color(0xFF795548), // Brown
-              ),
-              accountName: Text(
-                user?.displayName ?? 'User',
-                style: const TextStyle(fontFamily: 'Georgia', fontSize: 18.0),
-              ),
-              accountEmail: Text(
-                user?.email ?? 'No email',
-                style: const TextStyle(fontSize: 14.0),
-              ),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  user?.email?.substring(0, 1).toUpperCase() ?? 'U',
-                  style: const TextStyle(
-                    fontSize: 24.0,
-                    color: Color(0xFF5D4037),
-                    fontFamily: 'Georgia',
-                  ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary,
+                    colorScheme.primary.withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ),
-            ),
-            // Navigation items
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  _buildDrawerItem(
-                    context,
-                    title: 'Making',
-                    route: '/making',
-                    isSelected: currentRoute == '/making',
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MakingScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    title: 'Flame Day',
-                    route: '/flame_day',
-                    isSelected: currentRoute == '/flame_day',
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const FlameDayScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDrawerItem(
-                    context,
-                    title: 'Analysis Charts',
-                    route: '/analysis',
-                    isSelected: currentRoute == '/analysis',
-                    onTap: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AnalysisScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  // Notifications item with badge
-                  StreamBuilder<int>(
-                    stream: NotificationService.unreadCountStream,
-                    builder: (context, snapshot) {
-                      final unreadCount = snapshot.data ?? 0;
-                      return _buildNotificationItem(
-                        context,
-                        title: 'Notifications',
-                        route: '/notifications',
-                        isSelected: currentRoute == '/notifications',
-                        unreadCount: unreadCount,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NotificationsScreen(),
-                            ),
-                          );
-                        },
-                      );
-                    },
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
+              child: UserAccountsDrawerHeader(
+                decoration: const BoxDecoration(),
+                accountName: Text(
+                  user?.displayName ?? 'User',
+                  style: textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onPrimary,
+                  ),
+                ),
+                accountEmail: Text(
+                  user?.email ?? 'No email',
+                  style: textTheme.titleLarge?.copyWith(
+                    color: colorScheme.onPrimary,
+                  ),
+                ),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: colorScheme.surface,
+                  child: Text(
+                    user?.email?.substring(0, 1).toUpperCase() ?? 'U',
+                    style: textTheme.headlineSmall?.copyWith(
+                      color: colorScheme.secondary,
+                    ),
+                  ),
+                ),
+                margin: EdgeInsets.zero,
+              ),
             ),
-            // Logout button
+            Expanded(
+              child: AnimatedOpacity(
+                opacity: _isContentVisible ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeIn,
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                  children: [
+                    _buildDrawerItem(
+                      context,
+                      title: 'Making',
+                      route: '/making',
+                      isSelected: widget.currentRoute == '/making',
+                      icon: Icons.lightbulb,
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MakingScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context,
+                      title: 'Flame Day',
+                      route: '/flame_day',
+                      isSelected: widget.currentRoute == '/flame_day',
+                      icon: Icons.local_fire_department,
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FlameDayScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildDrawerItem(
+                      context,
+                      title: 'Analysis Charts',
+                      route: '/analysis',
+                      isSelected: widget.currentRoute == '/analysis',
+                      icon: Icons.bar_chart,
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AnalysisScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    StreamBuilder<int>(
+                      stream: NotificationService.unreadCountStream,
+                      builder: (context, snapshot) {
+                        final unreadCount = snapshot.data ?? 0;
+                        return _buildNotificationItem(
+                          context,
+                          title: 'Notifications',
+                          route: '/notifications',
+                          isSelected: widget.currentRoute == '/notifications',
+                          unreadCount: unreadCount,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const NotificationsScreen(),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(height: 1, thickness: 1, color: Colors.grey),
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton(
+              child: OutlinedButton(
                 onPressed: () async {
                   await FirebaseAuth.instance.signOut();
                   if (context.mounted) {
@@ -133,20 +180,26 @@ class CustomDrawer extends StatelessWidget {
                     );
                   }
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5D4037), // Deep brown
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30.0),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide.none,
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14.0,
+                    horizontal: 16.0,
                   ),
                 ),
-                child: const Text(
-                  'Logout',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    color: Colors.white,
-                    fontFamily: 'Georgia',
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Icon(Icons.logout, color: colorScheme.primary, size: 20.0),
+                    const SizedBox(width: 8.0),
+                    Text(
+                      'Logout',
+                      style: textTheme.titleMedium?.copyWith(
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -161,19 +214,26 @@ class CustomDrawer extends StatelessWidget {
     required String title,
     required String route,
     required bool isSelected,
+    required IconData icon,
     required VoidCallback onTap,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ListTile(
+      leading: Icon(icon, color: colorScheme.secondary, size: 20.0),
       title: Text(
         title,
-        style: TextStyle(
-          fontSize: 16.0,
-          fontFamily: 'Georgia',
-          color: const Color(0xFF5D4037),
+        style: textTheme.titleMedium?.copyWith(
+          color: colorScheme.secondary,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
-      tileColor: isSelected ? const Color(0xFF5D4037).withOpacity(0.1) : null,
+      tileColor: isSelected ? colorScheme.primary.withOpacity(0.1) : null,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16.0,
+        vertical: 8.0,
+      ),
       onTap: onTap,
     );
   }
@@ -186,20 +246,21 @@ class CustomDrawer extends StatelessWidget {
     required int unreadCount,
     required VoidCallback onTap,
   }) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ListTile(
       leading: Icon(
         Icons.notifications,
-        color: const Color(0xFF5D4037),
+        color: colorScheme.secondary,
         size: 20.0,
       ),
       title: Row(
         children: [
           Text(
             title,
-            style: TextStyle(
-              fontSize: 16.0,
-              fontFamily: 'Georgia',
-              color: const Color(0xFF5D4037),
+            style: textTheme.titleMedium?.copyWith(
+              color: colorScheme.secondary,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -211,7 +272,7 @@ class CustomDrawer extends StatelessWidget {
                 vertical: 2.0,
               ),
               decoration: BoxDecoration(
-                color: Colors.red,
+                color: colorScheme.error,
                 borderRadius: BorderRadius.circular(10.0),
               ),
               constraints: const BoxConstraints(
@@ -220,9 +281,8 @@ class CustomDrawer extends StatelessWidget {
               ),
               child: Text(
                 unreadCount > 99 ? '99+' : unreadCount.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.0,
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onError,
                   fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
@@ -231,7 +291,11 @@ class CustomDrawer extends StatelessWidget {
           ],
         ],
       ),
-      tileColor: isSelected ? const Color(0xFF5D4037).withOpacity(0.1) : null,
+      tileColor: isSelected ? colorScheme.primary.withOpacity(0.1) : null,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16.0,
+        vertical: 8.0,
+      ),
       onTap: onTap,
     );
   }

@@ -6,6 +6,7 @@ import 'making_screen5.dart';
 import 'making_screen6.dart';
 import 'making_screen7.dart';
 import '../models/candle_data.dart';
+import 'dart:async';
 
 class MakingScreen4 extends StatefulWidget {
   final CandleData candleData;
@@ -18,16 +19,25 @@ class MakingScreen4 extends StatefulWidget {
 
 class _MakingScreen4State extends State<MakingScreen4> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _numberOfWicksController =
-      TextEditingController();
-  final TextEditingController _wickCostController = TextEditingController();
-  final TextEditingController _stickerCostController = TextEditingController();
-  final TextEditingController _wickTypeController = TextEditingController();
+  final _numberOfWicksController = TextEditingController();
+  final _wickCostController = TextEditingController();
+  final _stickerCostController = TextEditingController();
+  final _wickTypeController = TextEditingController();
+
+  bool _isContentVisible = false;
 
   @override
   void initState() {
     super.initState();
     _initializeData();
+    // Trigger the fade-in animation
+    Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        setState(() {
+          _isContentVisible = true;
+        });
+      }
+    });
   }
 
   void _initializeData() {
@@ -49,12 +59,30 @@ class _MakingScreen4State extends State<MakingScreen4> {
     super.dispose();
   }
 
-  void _saveData() {
+  void _saveDataAndNavigate() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
     widget.candleData.wickDetail = WickDetail(
       numberOfWicks: int.tryParse(_numberOfWicksController.text) ?? 0,
       wickType: _wickTypeController.text,
       wickCost: double.tryParse(_wickCostController.text) ?? 0.0,
       stickerCost: double.tryParse(_stickerCostController.text) ?? 0.0,
+    );
+
+    Widget nextScreen;
+    if (widget.candleData.isScented == true) {
+      nextScreen = MakingScreen5(candleData: widget.candleData);
+    } else if (widget.candleData.isColoured == true) {
+      nextScreen = MakingScreen6(candleData: widget.candleData);
+    } else {
+      nextScreen = MakingScreen7(candleData: widget.candleData);
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => nextScreen),
     );
   }
 
@@ -67,30 +95,17 @@ class _MakingScreen4State extends State<MakingScreen4> {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF795548), // Brown
-        title: const Text(
-          'Making - Wick Details',
-          style: TextStyle(fontFamily: 'Georgia', color: Colors.white),
-        ),
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
+        title: const Text('Making - Wick Details'),
         actions: [
           StreamBuilder<DateTime>(
             stream: _dateTimeStream(),
             builder: (context, snapshot) {
               final now = snapshot.data ?? DateTime.now();
-              final dateFormatter = DateFormat('MMM d, yyyy');
-              final timeFormatter = DateFormat('h:mm a'); // 12-hour format
-              final formattedDate = dateFormatter.format(now);
-              final formattedTime = timeFormatter.format(now);
-
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Column(
@@ -98,19 +113,19 @@ class _MakingScreen4State extends State<MakingScreen4> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      formattedDate,
+                      DateFormat('MMM d, yyyy').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      formattedTime,
+                      DateFormat('h:mm a').format(now),
                       style: const TextStyle(
-                        fontSize: 14.0,
+                        fontSize: 18.0,
                         color: Colors.white,
-                        fontFamily: 'Georgia',
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
@@ -124,259 +139,166 @@ class _MakingScreen4State extends State<MakingScreen4> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5D4037).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sample: ${widget.candleData.sampleName}',
-                        style: const TextStyle(
-                          fontSize: 18.0,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                      const SizedBox(height: 8.0),
-                      Text(
-                        'Candle Type: ${widget.candleData.candleType}',
-                        style: const TextStyle(
-                          fontSize: 16.0,
-                          fontFamily: 'Georgia',
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20.0),
-                const Text(
-                  'Wick Details',
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF5D4037),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Card(
-                  elevation: 3.0,
-                  child: Padding(
+          child: AnimatedOpacity(
+            opacity: _isContentVisible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeIn,
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
                     padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
                     child: Column(
                       children: [
-                        TextFormField(
-                          controller: _numberOfWicksController,
-                          decoration: const InputDecoration(
-                            labelText: 'Number of Wicks',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Required';
-                            }
-                            if (int.tryParse(value) == null ||
-                                int.parse(value) <= 0) {
-                              return 'Invalid number';
-                            }
-                            return null;
-                          },
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
+                        Text(
+                          'Sample Name: ${widget.candleData.sampleName}',
+                          style: textTheme.titleLarge?.copyWith(
+                            color: colorScheme.primary,
                           ),
                         ),
-                        const SizedBox(height: 16.0),
-                        TextFormField(
-                          controller: _wickTypeController,
-                          decoration: const InputDecoration(
-                            labelText: 'Wick Type',
-                            border: OutlineInputBorder(),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Wick type is required';
-                            }
-                            return null;
-                          },
-                          style: const TextStyle(
-                            fontSize: 14.0,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF5D4037),
-                          ),
-                        ),
-                        const SizedBox(height: 16.0),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _wickCostController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Cost of Wick (\$)',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}'),
-                                  ),
-                                ],
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Required';
-                                  }
-                                  if (double.tryParse(value) == null ||
-                                      double.parse(value) < 0) {
-                                    return 'Invalid cost';
-                                  }
-                                  return null;
-                                },
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12.0),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _stickerCostController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Cost of Sticker (\$)',
-                                  border: OutlineInputBorder(),
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+\.?\d{0,2}'),
-                                  ),
-                                ],
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Required';
-                                  }
-                                  if (double.tryParse(value) == null ||
-                                      double.parse(value) < 0) {
-                                    return 'Invalid cost';
-                                  }
-                                  return null;
-                                },
-                                style: const TextStyle(
-                                  fontSize: 14.0,
-                                  fontFamily: 'Georgia',
-                                  color: Color(0xFF5D4037),
-                                ),
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 4.0),
+                        Text(
+                          'Candle Type: ${widget.candleData.candleType}',
+                          style: textTheme.titleMedium,
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 30.0),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
+                  const SizedBox(height: 24.0),
+
+                  _buildWickForm(),
+
+                  const SizedBox(height: 32.0),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: colorScheme.primary),
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(vertical: 14.0),
                           ),
-                        ),
-                        child: const Text(
-                          'Back',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16.0),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _saveData();
-                            Widget nextScreen;
-                            if (widget.candleData.isScented == true) {
-                              nextScreen = MakingScreen5(
-                                candleData: widget.candleData,
-                              );
-                            } else if (widget.candleData.isColoured == true) {
-                              nextScreen = MakingScreen6(
-                                candleData: widget.candleData,
-                              );
-                            } else {
-                              nextScreen = MakingScreen7(
-                                candleData: widget.candleData,
-                              );
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => nextScreen,
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF795548),
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.0),
-                          ),
-                        ),
-                        child: const Text(
-                          'Next',
-                          style: TextStyle(
-                            fontSize: 18.0,
-                            color: Colors.white,
-                            fontFamily: 'Georgia',
+                          child: Text(
+                            'Back',
+                            style: TextStyle(
+                              fontSize: 22,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 16.0),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _saveDataAndNavigate,
+                          child: const Text('Next'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFormCard({required String title, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16.0),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface, // White background
+            borderRadius: BorderRadius.circular(12.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.07),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWickForm() {
+    return _buildFormCard(
+      title: 'Wick Details',
+      child: Column(
+        children: [
+          _buildTextFormField(
+            controller: _numberOfWicksController,
+            label: 'Number of Wicks',
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          _buildTextFormField(
+            controller: _wickTypeController,
+            label: 'Wick Type',
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _wickCostController,
+                  label: 'Cost of Wick (\$)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextFormField(
+                  controller: _stickerCostController,
+                  label: 'Cost of Sticker (\$)',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextFormField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(labelText: label),
+      keyboardType: keyboardType,
+      inputFormatters: keyboardType == TextInputType.number
+          ? [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))]
+          : [],
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Required';
+        if (keyboardType == TextInputType.number &&
+            (double.tryParse(value) == null || double.parse(value) < 0)) {
+          return 'Invalid';
+        }
+        return null;
+      },
     );
   }
 }

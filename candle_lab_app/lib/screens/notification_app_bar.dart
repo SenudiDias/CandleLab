@@ -29,7 +29,7 @@ class NotificationAppBar extends StatelessWidget
       backgroundColor: backgroundColor,
       title: Text(
         title,
-        style: const TextStyle(fontFamily: 'Georgia', color: Colors.white),
+        style: const TextStyle(fontFamily: 'ThSarabunNew', color: Colors.white),
       ),
       leading: Builder(
         builder: (context) => IconButton(
@@ -138,17 +138,17 @@ class NotificationAppBar extends StatelessWidget
                   Text(
                     formattedDate,
                     style: const TextStyle(
-                      fontSize: 14.0,
+                      fontSize: 18.0,
                       color: Colors.white,
-                      fontFamily: 'Georgia',
+                      fontFamily: 'ThSarabunNew',
                     ),
                   ),
                   Text(
                     formattedTime,
                     style: const TextStyle(
-                      fontSize: 14.0,
+                      fontSize: 18.0,
                       color: Colors.white,
-                      fontFamily: 'Georgia',
+                      fontFamily: 'ThSarabunNew',
                     ),
                   ),
                 ],

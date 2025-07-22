@@ -30,13 +30,13 @@ class WaxDetail {
   };
 
   factory WaxDetail.fromJson(Map<String, dynamic> json) => WaxDetail(
-    waxType: json['waxType'],
+    waxType: json['waxType'] ?? 'Unknown',
     product: json['product'] ?? '',
     supplier: json['supplier'] ?? '',
-    weight: json['weight']?.toDouble() ?? 0.0,
-    percentage: json['percentage']?.toDouble() ?? 0.0,
-    costPerKg: json['costPerKg']?.toDouble() ?? 0.0,
-    cost: json['cost']?.toDouble() ?? 0.0,
+    weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
+    percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
+    costPerKg: (json['costPerKg'] as num?)?.toDouble() ?? 0.0,
+    cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
   );
 }
 
@@ -71,12 +71,13 @@ class ContainerDetail {
 
   factory ContainerDetail.fromJson(Map<String, dynamic> json) =>
       ContainerDetail(
-        numberOfContainers: json['numberOfContainers'] ?? 0,
-        weightPerCandle: json['weightPerCandle']?.toDouble() ?? 0.0,
-        waxDepth: json['waxDepth']?.toDouble() ?? 0.0,
-        containerDiameter: json['containerDiameter']?.toDouble() ?? 0.0,
-        cost: json['cost']?.toDouble() ?? 0.0,
-        containerHeated: json['containerHeated'] ?? false,
+        numberOfContainers: (json['numberOfContainers'] as num?)?.toInt() ?? 0,
+        weightPerCandle: (json['weightPerCandle'] as num?)?.toDouble() ?? 0.0,
+        waxDepth: (json['waxDepth'] as num?)?.toDouble() ?? 0.0,
+        containerDiameter:
+            (json['containerDiameter'] as num?)?.toDouble() ?? 0.0,
+        cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
+        containerHeated: json['containerHeated'] as bool? ?? false,
         supplier: json['supplier'] ?? '',
       );
 }
@@ -105,11 +106,11 @@ class PillarDetail {
   };
 
   factory PillarDetail.fromJson(Map<String, dynamic> json) => PillarDetail(
-    numberOfPillars: json['numberOfPillars'] ?? 0,
-    waxWeight: json['waxWeight']?.toDouble() ?? 0.0,
-    height: json['height']?.toDouble() ?? 0.0,
-    largestWidth: json['largestWidth']?.toDouble() ?? 0.0,
-    smallestWidth: json['smallestWidth']?.toDouble() ?? 0.0,
+    numberOfPillars: (json['numberOfPillars'] as num?)?.toInt() ?? 0,
+    waxWeight: (json['waxWeight'] as num?)?.toDouble() ?? 0.0,
+    height: (json['height'] as num?)?.toDouble() ?? 0.0,
+    largestWidth: (json['largestWidth'] as num?)?.toDouble() ?? 0.0,
+    smallestWidth: (json['smallestWidth'] as num?)?.toDouble() ?? 0.0,
   );
 }
 
@@ -121,8 +122,10 @@ class MouldDetail {
 
   Map<String, dynamic> toJson() => {'type': type, 'number': number};
 
-  factory MouldDetail.fromJson(Map<String, dynamic> json) =>
-      MouldDetail(type: json['type'] ?? 'Melt', number: json['number'] ?? 0);
+  factory MouldDetail.fromJson(Map<String, dynamic> json) => MouldDetail(
+    type: json['type'] ?? 'Melt',
+    number: (json['number'] as num?)?.toInt() ?? 0,
+  );
 }
 
 class WickDetail {
@@ -146,10 +149,10 @@ class WickDetail {
   };
 
   factory WickDetail.fromJson(Map<String, dynamic> json) => WickDetail(
-    numberOfWicks: json['numberOfWicks'] ?? 0,
+    numberOfWicks: (json['numberOfWicks'] as num?)?.toInt() ?? 0,
     wickType: json['wickType'] ?? 'Cotton',
-    wickCost: json['wickCost']?.toDouble() ?? 0.0,
-    stickerCost: json['stickerCost']?.toDouble() ?? 0.0,
+    wickCost: (json['wickCost'] as num?)?.toDouble() ?? 0.0,
+    stickerCost: (json['stickerCost'] as num?)?.toDouble() ?? 0.0,
   );
 }
 
@@ -182,10 +185,10 @@ class ScentDetail {
   factory ScentDetail.fromJson(Map<String, dynamic> json) => ScentDetail(
     scentType: json['scentType'] ?? 'Seasalt and Driftwood',
     supplier: json['supplier'] ?? '',
-    weight: json['weight']?.toDouble() ?? 0.0,
-    percentage: json['percentage']?.toDouble() ?? 0.0,
-    volume: json['volume']?.toDouble() ?? 0.0,
-    cost: json['cost']?.toDouble() ?? 0.0,
+    weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
+    percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
+    volume: (json['volume'] as num?)?.toDouble() ?? 0.0,
+    cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
   );
 }
 
@@ -215,9 +218,9 @@ class ColourDetail {
   factory ColourDetail.fromJson(Map<String, dynamic> json) => ColourDetail(
     colour: json['colour'] ?? '',
     supplier: json['supplier'] ?? '',
-    weight: json['weight']?.toDouble() ?? 0.0,
-    percentage: json['percentage']?.toDouble() ?? 0.0,
-    cost: json['cost']?.toDouble() ?? 0.0,
+    weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
+    percentage: (json['percentage'] as num?)?.toDouble() ?? 0.0,
+    cost: (json['cost'] as num?)?.toDouble() ?? 0.0,
   );
 }
 
@@ -258,14 +261,14 @@ class TemperatureDetail {
 
   factory TemperatureDetail.fromJson(Map<String, dynamic> json) =>
       TemperatureDetail(
-        maxHeatedC: json['maxHeatedC']?.toDouble() ?? 0.0,
-        maxHeatedF: json['maxHeatedF']?.toDouble() ?? 0.0,
-        fragranceMixingC: json['fragranceMixingC']?.toDouble() ?? 0.0,
-        fragranceMixingF: json['fragranceMixingF']?.toDouble() ?? 0.0,
-        pouringC: json['pouringC']?.toDouble() ?? 0.0,
-        pouringF: json['pouringF']?.toDouble() ?? 0.0,
-        ambientTempC: json['ambientTempC']?.toDouble() ?? 0.0,
-        ambientTempF: json['ambientTempF']?.toDouble() ?? 0.0,
+        maxHeatedC: (json['maxHeatedC'] as num?)?.toDouble() ?? 0.0,
+        maxHeatedF: (json['maxHeatedF'] as num?)?.toDouble() ?? 0.0,
+        fragranceMixingC: (json['fragranceMixingC'] as num?)?.toDouble() ?? 0.0,
+        fragranceMixingF: (json['fragranceMixingF'] as num?)?.toDouble() ?? 0.0,
+        pouringC: (json['pouringC'] as num?)?.toDouble() ?? 0.0,
+        pouringF: (json['pouringF'] as num?)?.toDouble() ?? 0.0,
+        ambientTempC: (json['ambientTempC'] as num?)?.toDouble() ?? 0.0,
+        ambientTempF: (json['ambientTempF'] as num?)?.toDouble() ?? 0.0,
         photoPaths: List<String>.from(json['photoPaths'] ?? []),
       );
 }
@@ -297,19 +300,156 @@ class CoolingCuringDetail {
 
   factory CoolingCuringDetail.fromJson(Map<String, dynamic> json) =>
       CoolingCuringDetail(
-        coolDownTime: json['coolDownTime']?.toDouble() ?? 0.0,
-        curingDays: json['curingDays'] ?? 0,
+        coolDownTime: (json['coolDownTime'] as num?)?.toDouble() ?? 0.0,
+        curingDays: (json['curingDays'] as num?)?.toInt() ?? 0,
         burningDay: json['burningDay'] != null
-            ? DateTime.parse(json['burningDay'])
+            ? DateTime.tryParse(json['burningDay'] as String) ?? null
             : null,
         reminderTime: json['reminderTime'] != null
             ? TimeOfDay(
-                hour: json['reminderTime']['hour'],
-                minute: json['reminderTime']['minute'],
+                hour: (json['reminderTime']['hour'] as num?)?.toInt() ?? 0,
+                minute: (json['reminderTime']['minute'] as num?)?.toInt() ?? 0,
               )
             : null,
         photoPaths: List<String>.from(json['photoPaths'] ?? []),
       );
+}
+
+class ScentThrow {
+  String coldThrow; // Strong, Moderate, Weak, No scent
+  Map<double, String>
+  hotThrow; // Key: distance (0.5, 1, 2, 4), Value: Strong, Moderate, Weak, No scent
+
+  ScentThrow({this.coldThrow = '', Map<double, String>? hotThrow})
+    : hotThrow = hotThrow ?? {0.5: '', 1: '', 2: '', 4: ''};
+
+  Map<String, dynamic> toJson() => {
+    'coldThrow': coldThrow,
+    'hotThrow': hotThrow.map((key, value) => MapEntry(key.toString(), value)),
+  };
+
+  factory ScentThrow.fromJson(Map<String, dynamic> json) => ScentThrow(
+    coldThrow: json['coldThrow'] as String? ?? '',
+    hotThrow: Map<double, String>.from(
+      (json['hotThrow'] as Map<String, dynamic>?)?.map(
+            (key, value) =>
+                MapEntry(double.tryParse(key) ?? 0.0, value as String),
+          ) ??
+          {0.5: '', 1: '', 2: '', 4: ''},
+    ),
+  );
+}
+
+class MeltMeasure {
+  double time;
+  double meltDiameter;
+  double meltDepth;
+  double fullMelt;
+  List<String> photoPaths;
+
+  MeltMeasure({
+    required this.time,
+    this.meltDiameter = 0.0,
+    this.meltDepth = 0.0,
+    this.fullMelt = 0.0,
+    List<String>? photoPaths,
+  }) : photoPaths = photoPaths ?? [];
+
+  Map<String, dynamic> toJson() {
+    return {
+      'time': time,
+      'meltDiameter': meltDiameter,
+      'meltDepth': meltDepth,
+      'fullMelt': fullMelt,
+      'photoPaths': photoPaths,
+    };
+  }
+
+  factory MeltMeasure.fromJson(Map<String, dynamic> json) {
+    return MeltMeasure(
+      time: (json['time'] as num).toDouble(),
+      meltDiameter: (json['meltDiameter'] as num?)?.toDouble() ?? 0.0,
+      meltDepth: (json['meltDepth'] as num?)?.toDouble() ?? 0.0,
+      fullMelt: (json['fullMelt'] as num?)?.toDouble() ?? 0.0,
+      photoPaths: (json['photoPaths'] as List<dynamic>?)?.cast<String>() ?? [],
+    );
+  }
+}
+
+class FlameRecord {
+  Map<double, String>
+  flameSizes; // Key: hours (0, 0.5, 1, etc.), Value: Too Big, Perfect, Too Small
+  bool flickering;
+  bool mushrooming;
+  bool sooting;
+  Duration? fullBurningTime;
+  String records;
+  List<String> photoPaths;
+  ScentThrow? scentThrow;
+  List<MeltMeasure> meltMeasures;
+
+  FlameRecord({
+    Map<double, String>? flameSizes,
+    this.flickering = false,
+    this.mushrooming = false,
+    this.sooting = false,
+    this.fullBurningTime,
+    this.records = '',
+    this.photoPaths = const [],
+    this.scentThrow,
+    List<MeltMeasure>? meltMeasures,
+  }) : flameSizes = flameSizes ?? {0: '', 0.5: '', 1: ''},
+       meltMeasures =
+           meltMeasures ??
+           [
+             MeltMeasure(time: 0.5),
+             MeltMeasure(time: 1.0),
+             MeltMeasure(time: 1.5),
+           ];
+
+  Map<String, dynamic> toJson() => {
+    'flameSizes': flameSizes.map(
+      (key, value) => MapEntry(key.toString(), value),
+    ),
+    'flickering': flickering,
+    'mushrooming': mushrooming,
+    'sooting': sooting,
+    'fullBurningTime': fullBurningTime?.inMinutes,
+    'records': records,
+    'photoPaths': photoPaths,
+    'scentThrow': scentThrow?.toJson(),
+    'meltMeasures': meltMeasures.map((measure) => measure.toJson()).toList(),
+  };
+
+  factory FlameRecord.fromJson(Map<String, dynamic> json) => FlameRecord(
+    flameSizes: Map<double, String>.from(
+      (json['flameSizes'] as Map<String, dynamic>?)?.map(
+            (key, value) =>
+                MapEntry(double.tryParse(key) ?? 0.0, value as String),
+          ) ??
+          {0: '', 0.5: '', 1: ''},
+    ),
+    flickering: json['flickering'] as bool? ?? false,
+    mushrooming: json['mushrooming'] as bool? ?? false,
+    sooting: json['sooting'] as bool? ?? false,
+    fullBurningTime: json['fullBurningTime'] != null
+        ? Duration(minutes: (json['fullBurningTime'] as num).toInt())
+        : null,
+    records: json['records'] as String? ?? '',
+    photoPaths: List<String>.from(json['photoPaths'] ?? []),
+    scentThrow: json['scentThrow'] != null
+        ? ScentThrow.fromJson(json['scentThrow'] as Map<String, dynamic>)
+        : null,
+    meltMeasures:
+        (json['meltMeasures'] as List<dynamic>?)
+            ?.map((item) => MeltMeasure.fromJson(item as Map<String, dynamic>))
+            .toList() ??
+        [
+          MeltMeasure(time: 0.5),
+          MeltMeasure(time: 1.0),
+          MeltMeasure(time: 1.5),
+        ],
+  );
 }
 
 class CandleData {
@@ -332,6 +472,10 @@ class CandleData {
   CoolingCuringDetail? coolingCuringDetail;
   DateTime? createdAt;
   double? totalCost;
+  DateTime? flameDate;
+  TimeOfDay? flameTime;
+  FlameRecord? flameRecord;
+  bool isFlamed;
   static List<String> availableScentTypes = ['Seasalt', 'Driftwood'];
 
   CandleData({
@@ -354,6 +498,10 @@ class CandleData {
     this.coolingCuringDetail,
     this.createdAt,
     this.totalCost,
+    this.flameDate,
+    this.flameTime,
+    this.flameRecord,
+    this.isFlamed = false,
   }) : waxTypes = waxTypes != null
            ? List<String>.from(waxTypes)
            : List<String>.empty(growable: true),
@@ -430,6 +578,9 @@ class CandleData {
     coolingCuringDetail = null;
     createdAt = null;
     totalCost = null;
+    flameDate = null;
+    flameTime = null;
+    flameRecord = null;
   }
 
   Map<String, dynamic> toJson() => {
@@ -452,49 +603,87 @@ class CandleData {
     'coolingCuringDetail': coolingCuringDetail?.toJson(),
     'createdAt': createdAt?.toIso8601String(),
     'totalCost': totalCost,
+    'flameDate': flameDate?.toIso8601String(),
+    'flameTime': flameTime != null
+        ? {'hour': flameTime!.hour, 'minute': flameTime!.minute}
+        : null,
+    'flameRecord': flameRecord?.toJson(),
+    'isFlamed': isFlamed,
   };
 
-  factory CandleData.fromJson(Map<String, dynamic> json) => CandleData(
-    id: json['id'],
-    userId: json['userId'],
-    sampleName: json['sampleName'],
-    candleType: json['candleType'],
-    waxTypes: List<String>.from(json['waxTypes'] ?? []),
-    isWicked: json['isWicked'],
-    isScented: json['isScented'] ?? false,
-    isColoured: json['isColoured'] ?? false,
-    waxDetails:
-        (json['waxDetails'] as List<dynamic>?)
-            ?.map((item) => WaxDetail.fromJson(item as Map<String, dynamic>))
-            .toList() ??
-        [],
-    containerDetail: json['containerDetail'] != null
-        ? ContainerDetail.fromJson(json['containerDetail'])
-        : null,
-    pillarDetail: json['pillarDetail'] != null
-        ? PillarDetail.fromJson(json['pillarDetail'])
-        : null,
-    mouldDetail: json['mouldDetail'] != null
-        ? MouldDetail.fromJson(json['mouldDetail'])
-        : null,
-    wickDetail: json['wickDetail'] != null
-        ? WickDetail.fromJson(json['wickDetail'])
-        : null,
-    scentDetail: json['scentDetail'] != null
-        ? ScentDetail.fromJson(json['scentDetail'])
-        : null,
-    colourDetail: json['colourDetail'] != null
-        ? ColourDetail.fromJson(json['colourDetail'])
-        : null,
-    temperatureDetail: json['temperatureDetail'] != null
-        ? TemperatureDetail.fromJson(json['temperatureDetail'])
-        : null,
-    coolingCuringDetail: json['coolingCuringDetail'] != null
-        ? CoolingCuringDetail.fromJson(json['coolingCuringDetail'])
-        : null,
-    createdAt: json['createdAt'] != null
-        ? DateTime.parse(json['createdAt'])
-        : null,
-    totalCost: json['totalCost']?.toDouble(),
-  );
+  factory CandleData.fromJson(Map<String, dynamic> json) {
+    try {
+      return CandleData(
+        id: json['id'] as String?,
+        userId: json['userId'] as String?,
+        sampleName: json['sampleName'] as String?,
+        candleType: json['candleType'] as String?,
+        waxTypes: List<String>.from(json['waxTypes'] ?? []),
+        isWicked: json['isWicked'] as bool?,
+        isScented: json['isScented'] as bool? ?? false,
+        isColoured: json['isColoured'] as bool? ?? false,
+        waxDetails:
+            (json['waxDetails'] as List<dynamic>?)
+                ?.map(
+                  (item) => WaxDetail.fromJson(item as Map<String, dynamic>),
+                )
+                .toList() ??
+            [],
+        containerDetail: json['containerDetail'] != null
+            ? ContainerDetail.fromJson(
+                json['containerDetail'] as Map<String, dynamic>,
+              )
+            : null,
+        pillarDetail: json['pillarDetail'] != null
+            ? PillarDetail.fromJson(
+                json['pillarDetail'] as Map<String, dynamic>,
+              )
+            : null,
+        mouldDetail: json['mouldDetail'] != null
+            ? MouldDetail.fromJson(json['mouldDetail'] as Map<String, dynamic>)
+            : null,
+        wickDetail: json['wickDetail'] != null
+            ? WickDetail.fromJson(json['wickDetail'] as Map<String, dynamic>)
+            : null,
+        scentDetail: json['scentDetail'] != null
+            ? ScentDetail.fromJson(json['scentDetail'] as Map<String, dynamic>)
+            : null,
+        colourDetail: json['colourDetail'] != null
+            ? ColourDetail.fromJson(
+                json['colourDetail'] as Map<String, dynamic>,
+              )
+            : null,
+        temperatureDetail: json['temperatureDetail'] != null
+            ? TemperatureDetail.fromJson(
+                json['temperatureDetail'] as Map<String, dynamic>,
+              )
+            : null,
+        coolingCuringDetail: json['coolingCuringDetail'] != null
+            ? CoolingCuringDetail.fromJson(
+                json['coolingCuringDetail'] as Map<String, dynamic>,
+              )
+            : null,
+        createdAt: json['createdAt'] != null
+            ? DateTime.tryParse(json['createdAt'] as String) ?? null
+            : null,
+        totalCost: (json['totalCost'] as num?)?.toDouble(),
+        flameDate: json['flameDate'] != null
+            ? DateTime.tryParse(json['flameDate'] as String) ?? null
+            : null,
+        flameTime: json['flameTime'] != null
+            ? TimeOfDay(
+                hour: (json['flameTime']['hour'] as num?)?.toInt() ?? 0,
+                minute: (json['flameTime']['minute'] as num?)?.toInt() ?? 0,
+              )
+            : null,
+        flameRecord: json['flameRecord'] != null
+            ? FlameRecord.fromJson(json['flameRecord'] as Map<String, dynamic>)
+            : null,
+        isFlamed: json['isFlamed'] as bool? ?? false,
+      );
+    } catch (e) {
+      print('Error parsing CandleData: $e');
+      rethrow;
+    }
+  }
 }

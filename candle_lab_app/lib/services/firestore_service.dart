@@ -73,6 +73,14 @@ class FirestoreService {
     }
   }
 
+  // Retrieve all CandleData objects for the logged-in user as a Stream
+  Stream<QuerySnapshot> getCandlesByUser(String userId) {
+    return _candlesCollection
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
   // Save a NotificationData object
   Future<void> saveNotification(NotificationData notification) async {
     final user = FirebaseAuth.instance.currentUser;

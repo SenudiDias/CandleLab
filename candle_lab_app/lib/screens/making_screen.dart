@@ -9,7 +9,8 @@ import 'login_screen.dart';
 import 'dart:async';
 
 class MakingScreen extends StatefulWidget {
-  const MakingScreen({super.key});
+  final CandleData? initialCandleData;
+  const MakingScreen({super.key, this.initialCandleData});
 
   @override
   State<MakingScreen> createState() => _MakingScreenState();
@@ -18,7 +19,7 @@ class MakingScreen extends StatefulWidget {
 class _MakingScreenState extends State<MakingScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _candleData = CandleData();
+  late CandleData _candleData;
   final _sampleNameController = TextEditingController();
   final _newWaxTypeController = TextEditingController();
   final FirestoreService _firestoreService = FirestoreService();
@@ -37,11 +38,23 @@ class _MakingScreenState extends State<MakingScreen>
   @override
   void initState() {
     super.initState();
+    _candleData = widget.initialCandleData ?? CandleData();
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _candleData.userId = user.uid;
     }
-
+    _sampleNameController.text = _candleData.sampleName ?? '';
+    _sampleNameController.addListener(() {
+      // Only check for duplicates, not empty input, during typing
+      if (_sampleNameController.text.isNotEmpty) {
+        _checkSampleName(_sampleNameController.text, isSubmission: false);
+      } else {
+        setState(() {
+          _sampleNameError =
+              null; // Clear error when field is empty during typing
+        });
+      }
+    });
     Timer(const Duration(milliseconds: 200), () {
       if (mounted) {
         setState(() {
@@ -108,7 +121,7 @@ class _MakingScreenState extends State<MakingScreen>
               onPressed: () {
                 Navigator.of(context).pop();
                 setState(() {
-                  _candleData.reset();
+                  _candleData = widget.initialCandleData ?? CandleData();
                   _sampleNameController.clear();
                   _newWaxTypeController.clear();
                   _sampleNameError = null;
@@ -135,31 +148,59 @@ class _MakingScreenState extends State<MakingScreen>
     );
   }
 
-  Future<void> _checkSampleName(String value) async {
-    if (value.isEmpty) {
+  Future<void> _checkSampleName(
+    String value, {
+    required bool isSubmission,
+  }) async {
+    if (isSubmission && value.isEmpty) {
       setState(() {
         _sampleNameError = 'Please enter a sample name';
       });
       return;
     }
 
+    if (value.isEmpty) {
+      setState(() {
+        _sampleNameError = null; // No error for empty field during typing
+      });
+      return;
+    }
+
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      setState(() {
+        _sampleNameError = 'User not authenticated';
+      });
+      return;
+    }
 
     try {
       final candles = await _firestoreService.getAllCandleData();
       final exists = candles.any(
-        (candle) => candle.sampleName == value && candle.userId == user.uid,
+        (candle) =>
+            candle.sampleName == value &&
+            candle.userId == user.uid &&
+            candle.id != (widget.initialCandleData?.id ?? ''),
       );
       setState(() {
         _sampleNameError = exists ? 'Sample name already exists' : null;
-        _candleData.sampleName = value;
+        if (!exists && isSubmission) {
+          _candleData.sampleName = value;
+        }
       });
     } catch (e) {
       setState(() {
         _sampleNameError = 'Error checking sample name';
       });
     }
+  }
+
+  Function(String) _debounce(Function(String) callback, Duration duration) {
+    Timer? timer;
+    return (String value) {
+      timer?.cancel();
+      timer = Timer(duration, () => callback(value));
+    };
   }
 
   @override
@@ -282,7 +323,14 @@ class _MakingScreenState extends State<MakingScreen>
                             }
                             return null;
                           },
-                          onChanged: _checkSampleName,
+                          onChanged: _debounce(
+                            (value) =>
+                                _checkSampleName(value, isSubmission: false),
+                            const Duration(milliseconds: 500),
+                          ),
+                          onFieldSubmitted: (value) {
+                            _checkSampleName(value, isSubmission: true);
+                          },
                         ),
                       ],
                     ),
@@ -528,7 +576,11 @@ class _MakingScreenState extends State<MakingScreen>
                       const SizedBox(width: 16.0),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
+                            await _checkSampleName(
+                              _sampleNameController.text,
+                              isSubmission: true,
+                            );
                             if (_formKey.currentState!.validate() &&
                                 _candleData.waxTypes.isNotEmpty &&
                                 _candleData.isWicked != null &&

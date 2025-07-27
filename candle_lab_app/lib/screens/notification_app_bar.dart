@@ -29,7 +29,7 @@ class NotificationAppBar extends StatelessWidget
       backgroundColor: backgroundColor,
       title: Text(
         title,
-        style: const TextStyle(fontFamily: 'ThSarabunNew', color: Colors.white),
+        style: const TextStyle(fontFamily: 'Poppins', color: Colors.white),
       ),
       leading: Builder(
         builder: (context) => IconButton(
@@ -58,7 +58,7 @@ class NotificationAppBar extends StatelessWidget
                           unreadCount > 9 ? '9+' : unreadCount.toString(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 8,
+                            fontSize: 4,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
@@ -100,7 +100,7 @@ class NotificationAppBar extends StatelessWidget
                             unreadCount > 9 ? '9+' : unreadCount.toString(),
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 8,
+                              fontSize: 4,
                               fontWeight: FontWeight.bold,
                             ),
                             textAlign: TextAlign.center,
@@ -138,17 +138,17 @@ class NotificationAppBar extends StatelessWidget
                   Text(
                     formattedDate,
                     style: const TextStyle(
-                      fontSize: 18.0,
+                      fontSize: 14.0,
                       color: Colors.white,
-                      fontFamily: 'ThSarabunNew',
+                      fontFamily: 'Poppins',
                     ),
                   ),
                   Text(
                     formattedTime,
                     style: const TextStyle(
-                      fontSize: 18.0,
+                      fontSize: 14.0,
                       color: Colors.white,
-                      fontFamily: 'ThSarabunNew',
+                      fontFamily: 'Poppins',
                     ),
                   ),
                 ],

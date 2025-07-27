@@ -66,11 +66,17 @@ flutter:
   uses-material-design: true
 
   fonts:
-    - family: THSarabunNew
+    - family: Poppins
       fonts:
-        - asset: fonts/THSarabunNew001.ttf
-        - asset: fonts/THSarabunNew-Bold001.ttf
+        - asset: fonts/Poppins-Black.ttf
+        - asset: fonts/Poppins-Bold.ttf
           weight: 700
+
+    # - family: THSarabunNew
+    #   fonts:
+    #     - asset: fonts/THSarabunNew001.ttf
+    #     - asset: fonts/THSarabunNew-Bold001.ttf
+    #       weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -260,7 +260,7 @@ class _MakingScreenState extends State<MakingScreen>
                     Text(
                       formattedDate,
                       style: textTheme.bodyMedium?.copyWith(
-                        fontSize: 18.0,
+                        fontSize: 14.0,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -268,7 +268,7 @@ class _MakingScreenState extends State<MakingScreen>
                     Text(
                       formattedTime,
                       style: textTheme.bodyMedium?.copyWith(
-                        fontSize: 18.0,
+                        fontSize: 14.0,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),

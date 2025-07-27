@@ -102,9 +102,9 @@ class _LoginScreenState extends State<LoginScreen>
                 child: const Text(
                   'Candle Lab',
                   style: TextStyle(
-                    fontSize: 80.0,
+                    fontSize: 60.0,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'ThSarabunNew',
+                    fontFamily: 'Poppins',
                     color: Color(0xFF5D4037), // Deep brown
                   ),
                 ),
@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen>
               const Text(
                 'Craft, Test, Perfect.',
                 style: TextStyle(
-                  fontSize: 22.0,
+                  fontSize: 18.0,
                   fontStyle: FontStyle.italic,
                   color: Color(0xFF795548), // Lighter brown
                 ),
@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen>
               if (_errorMessage != null)
                 Text(
                   _errorMessage!,
-                  style: const TextStyle(color: Colors.red, fontSize: 14.0),
+                  style: const TextStyle(color: Colors.red, fontSize: 10.0),
                   textAlign: TextAlign.center,
                 ),
               const SizedBox(height: 20.0),
@@ -172,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen>
                       child: Text(
                         _isLoginMode ? 'Login' : 'Register',
                         style: const TextStyle(
-                          fontSize: 20.0,
+                          fontSize: 16.0,
                           color: Colors.white,
                         ),
                       ),
@@ -191,7 +191,7 @@ class _LoginScreenState extends State<LoginScreen>
                       ? 'Need an account? Register'
                       : 'Have an account? Login',
                   style: const TextStyle(
-                    fontSize: 16.0,
+                    fontSize: 12.0,
                     color: Color(0xFF5D4037),
                   ),
                 ),

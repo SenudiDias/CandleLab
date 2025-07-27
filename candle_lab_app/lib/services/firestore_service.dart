@@ -24,8 +24,11 @@ class FirestoreService {
       if (candleData.id == null) {
         final docRef = await _candlesCollection.add(data);
         candleData.id = docRef.id;
+        data['id'] = docRef.id;
+        await _candlesCollection.doc(docRef.id).set(data);
         print('Candle saved with ID: ${candleData.id}');
       } else {
+        data['id'] = candleData.id;
         await _candlesCollection.doc(candleData.id).set(data);
         print('Candle updated with ID: ${candleData.id}');
       }
@@ -160,5 +163,108 @@ class FirestoreService {
       print('Error marking notification as read: $e');
       throw Exception('Failed to mark notification as read: $e');
     }
+  }
+
+  Stream<List<CandleData>> getFilteredCandles({
+    required String userId,
+    String? candleType,
+    double? meltPercentage,
+    double? meltTime,
+    double? meltDepth,
+    double? scentDistance,
+    String? scentThrow,
+    String? sizeCategory,
+  }) {
+    if (userId.isEmpty) {
+      return Stream.value([]);
+    }
+    Query query = _candlesCollection.where('userId', isEqualTo: userId);
+
+    if (candleType != null) {
+      query = query.where('candleType', isEqualTo: candleType);
+    }
+
+    return query.orderBy('totalCost', descending: false).snapshots().map((
+      snapshot,
+    ) {
+      final candles = snapshot.docs
+          .map((doc) => CandleData.fromJson(doc.data() as Map<String, dynamic>))
+          .toList();
+
+      return candles.where((candle) {
+        bool matches = true;
+
+        // Apply flame-related filters only if flameRecord exists
+        if ((meltPercentage != null ||
+                meltTime != null ||
+                meltDepth != null ||
+                scentDistance != null ||
+                scentThrow != null) &&
+            candle.flameRecord == null) {
+          return false;
+        }
+
+        // Melt Filter
+        if (meltPercentage != null &&
+            meltTime != null &&
+            candle.flameRecord != null) {
+          final meltMeasure = candle.flameRecord!.meltMeasures.firstWhere(
+            (m) => m.time == meltTime,
+            orElse: () => MeltMeasure(time: meltTime!),
+          );
+          matches = matches && (meltMeasure.fullMelt * 100) >= meltPercentage;
+        }
+
+        // Melt Depth Filter
+        if (meltDepth != null &&
+            meltTime != null &&
+            candle.flameRecord != null) {
+          final meltMeasure = candle.flameRecord!.meltMeasures.firstWhere(
+            (m) => m.time == meltTime,
+            orElse: () => MeltMeasure(time: meltTime!),
+          );
+          if (meltDepth == 0.0) {
+            matches = matches && meltMeasure.meltDepth == 0.0;
+          } else {
+            matches =
+                matches &&
+                meltMeasure.meltDepth > 0.0 &&
+                meltMeasure.meltDepth >= meltDepth - 2 &&
+                meltMeasure.meltDepth <= meltDepth + 2;
+          }
+        }
+
+        // Scent Throw Filter
+        if (scentDistance != null &&
+            scentThrow != null &&
+            candle.flameRecord != null &&
+            candle.flameRecord!.scentThrow != null) {
+          final hotThrow =
+              candle.flameRecord!.scentThrow!.hotThrow[scentDistance] ?? '';
+          matches = matches && hotThrow == scentThrow;
+        } else if (scentDistance != null && scentThrow != null) {
+          matches =
+              false; // Exclude candles if scent filter is active but scentThrow is null
+        }
+
+        // Size Filter
+        if (sizeCategory != null) {
+          final totalWaxWeight = candle.waxDetails.fold<double>(
+            0.0,
+            (sum, detail) => sum + detail.weight,
+          );
+          final range = sizeCategory
+              .split('-')
+              .map((s) => double.parse(s.replaceAll('g', '')))
+              .toList();
+          matches =
+              matches &&
+              totalWaxWeight >= range[0] &&
+              (range.length > 1 ? totalWaxWeight <= range[1] : true);
+        }
+
+        return matches;
+      }).toList();
+    });
   }
 }

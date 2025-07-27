@@ -20,7 +20,7 @@ class _MakingScreen8State extends State<NotificationsScreen> {
         backgroundColor: const Color(0xFF795548),
         title: const Text(
           'Notifications',
-          style: TextStyle(fontFamily: 'ThSarabunNew', color: Colors.white),
+          style: TextStyle(fontFamily: 'Poppins', color: Colors.white),
         ),
         leading: Builder(
           builder: (context) => StreamBuilder<int>(
@@ -51,7 +51,7 @@ class _MakingScreen8State extends State<NotificationsScreen> {
                           unreadCount > 99 ? '99+' : unreadCount.toString(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: 6,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,
@@ -81,8 +81,8 @@ class _MakingScreen8State extends State<NotificationsScreen> {
                 child: Text(
                   'No notifications available',
                   style: TextStyle(
-                    fontSize: 16.0,
-                    fontFamily: 'ThSarabunNew',
+                    fontSize: 12.0,
+                    fontFamily: 'Poppins',
                     color: Color(0xFF5D4037),
                   ),
                 ),
@@ -103,8 +103,8 @@ class _MakingScreen8State extends State<NotificationsScreen> {
                     title: Text(
                       notification.candleName,
                       style: TextStyle(
-                        fontSize: 16.0,
-                        fontFamily: 'ThSarabunNew',
+                        fontSize: 12.0,
+                        fontFamily: 'Poppins',
                         color: const Color(0xFF5D4037),
                         fontWeight: notification.isRead
                             ? FontWeight.normal
@@ -114,8 +114,8 @@ class _MakingScreen8State extends State<NotificationsScreen> {
                     subtitle: Text(
                       'Ready to burn on ${DateFormat('MMM d, yyyy, h:mm a').format(notification.burningDay)}',
                       style: const TextStyle(
-                        fontSize: 14.0,
-                        fontFamily: 'ThSarabunNew',
+                        fontSize: 10.0,
+                        fontFamily: 'Poppins',
                         color: Color(0xFF5D4037),
                       ),
                     ),
@@ -151,10 +151,7 @@ class _MakingScreen8State extends State<NotificationsScreen> {
         return AlertDialog(
           title: const Text(
             'Notification Details',
-            style: TextStyle(
-              fontFamily: 'ThSarabunNew',
-              color: Color(0xFF5D4037),
-            ),
+            style: TextStyle(fontFamily: 'Poppins', color: Color(0xFF5D4037)),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -163,35 +160,35 @@ class _MakingScreen8State extends State<NotificationsScreen> {
               Text(
                 'Sample Name: ${notification.candleName}',
                 style: const TextStyle(
-                  fontFamily: 'ThSarabunNew',
+                  fontFamily: 'Poppins',
                   color: Color(0xFF5D4037),
                 ),
               ),
               Text(
                 'Candle Type: ${notification.candleType}',
                 style: const TextStyle(
-                  fontFamily: 'ThSarabunNew',
+                  fontFamily: 'Poppins',
                   color: Color(0xFF5D4037),
                 ),
               ),
               Text(
                 'Batch Date: ${DateFormat('MMM d, yyyy').format(batchDate)}',
                 style: const TextStyle(
-                  fontFamily: 'ThSarabunNew',
+                  fontFamily: 'Poppins',
                   color: Color(0xFF5D4037),
                 ),
               ),
               Text(
                 'Batch Time: $batchTime',
                 style: const TextStyle(
-                  fontFamily: 'ThSarabunNew',
+                  fontFamily: 'Poppins',
                   color: Color(0xFF5D4037),
                 ),
               ),
               Text(
                 'Burn Date: $burnDate',
                 style: const TextStyle(
-                  fontFamily: 'ThSarabunNew',
+                  fontFamily: 'Poppins',
                   color: Color(0xFF5D4037),
                 ),
               ),
@@ -208,7 +205,7 @@ class _MakingScreen8State extends State<NotificationsScreen> {
               child: const Text(
                 'OK',
                 style: TextStyle(
-                  fontFamily: 'ThSarabunNew',
+                  fontFamily: 'Poppins',
                   color: Color(0xFF795548),
                 ),
               ),

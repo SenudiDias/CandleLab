@@ -175,7 +175,7 @@ class _MakingScreen2State extends State<MakingScreen2> {
                     Text(
                       DateFormat('MMM d, yyyy').format(now),
                       style: const TextStyle(
-                        fontSize: 18.0,
+                        fontSize: 14.0,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -183,7 +183,7 @@ class _MakingScreen2State extends State<MakingScreen2> {
                     Text(
                       DateFormat('h:mm a').format(now),
                       style: const TextStyle(
-                        fontSize: 18.0,
+                        fontSize: 14.0,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -270,7 +270,7 @@ class _MakingScreen2State extends State<MakingScreen2> {
                           child: Text(
                             'Back',
                             style: TextStyle(
-                              fontSize: 22,
+                              fontSize: 18,
                               color: colorScheme.primary,
                               fontWeight: FontWeight.bold,
                             ),

@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFF795548), // Main interactive color
           secondary: const Color(0xFF5D4037), // Darker brown for text/elements
           background: const Color(0xFFF5F5DC), // Beige
-          surface: Colors.white, // Card/dialog backgrounds
+          surface: const Color(0xFFF9F1E7), // Card/dialog backgrounds
           onPrimary: Colors.white, // Text/icons on primary color
           onSecondary: Colors.white, // Text/icons on secondary color
           onBackground: const Color(0xFF5D4037), // Text on beige background
@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
           elevation: 2,
           titleTextStyle: TextStyle(
             fontFamily: 'ThSarabunNew',
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -73,7 +73,7 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(8.0),
             borderSide: const BorderSide(color: Color(0xFF795548), width: 2.0),
           ),
-          labelStyle: const TextStyle(color: Color(0xFF5D4037), fontSize: 18),
+          labelStyle: const TextStyle(color: Color(0xFF5D4037), fontSize: 14),
         ),
 
         // 6. Define a global style for ElevatedButtons.
@@ -90,7 +90,7 @@ class MyApp extends StatelessWidget {
             ),
             textStyle: const TextStyle(
               fontFamily: 'ThSarabunNew',
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -99,7 +99,7 @@ class MyApp extends StatelessWidget {
         // 7. Define default text styles.
         textTheme: const TextTheme(
           titleLarge: TextStyle(
-            fontSize: 22.0,
+            fontSize: 18.0,
             fontWeight: FontWeight.bold,
             color: Color(0xFF5D4037),
           ),
@@ -108,8 +108,8 @@ class MyApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: Color(0xFF5D4037),
           ),
-          bodyLarge: TextStyle(fontSize: 18.0, color: Color(0xFF5D4037)),
-          bodyMedium: TextStyle(fontSize: 16.0, color: Color(0xFF5D4037)),
+          bodyLarge: TextStyle(fontSize: 14.0, color: Color(0xFF5D4037)),
+          bodyMedium: TextStyle(fontSize: 12.0, color: Color(0xFF5D4037)),
         ),
 
         visualDensity: VisualDensity.adaptivePlatformDensity,

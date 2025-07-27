@@ -24,6 +24,13 @@ class _FlameDayScreenState extends State<FlameDayScreen>
   String _searchQuery = '';
   bool _isContentVisible = false;
 
+  Stream<DateTime> _dateTimeStream() async* {
+    while (true) {
+      yield DateTime.now();
+      await Future.delayed(const Duration(minutes: 1));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +64,43 @@ class _FlameDayScreenState extends State<FlameDayScreen>
           'Flame Day',
           style: textTheme.titleLarge?.copyWith(color: colorScheme.onPrimary),
         ),
+        actions: [
+          StreamBuilder<DateTime>(
+            stream: _dateTimeStream(),
+            builder: (context, snapshot) {
+              final now = snapshot.data ?? DateTime.now();
+              final dateFormatter = DateFormat('MMM d, yyyy');
+              final timeFormatter = DateFormat('h:mm a');
+              final formattedDate = dateFormatter.format(now);
+              final formattedTime = timeFormatter.format(now);
+              return Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      formattedDate,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontSize: 14.0,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      formattedTime,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontSize: 14.0,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       drawer: const CustomDrawer(currentRoute: '/flame_day'),
       body: userId == null
@@ -300,7 +344,7 @@ class _FlameDayScreenState extends State<FlameDayScreen>
                                       : 'Not set';
 
                                   return Card(
-                                    color: const Color(0xFFF9F1E7),
+                                    color: colorScheme.surface,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12.0),
                                     ),
@@ -500,7 +544,7 @@ class _FlameDayScreenState extends State<FlameDayScreen>
                                       : 'Not set';
 
                                   return Card(
-                                    color: const Color(0xFFF9F1E7),
+                                    color: colorScheme.surface,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12.0),
                                     ),
@@ -992,6 +1036,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
     final referenceDiameter = widget.candle.candleType == 'Container'
         ? (widget.candle.containerDetail?.containerDiameter ?? 1.0)
         : (widget.candle.pillarDetail?.largestWidth ?? 1.0);
+    final isScented = widget.candle.isScented == true;
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -1012,7 +1057,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Card(
-                  color: const Color(0xFFF9F1E7),
+                  color: colorScheme.surface,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.0),
                   ),
@@ -1150,7 +1195,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                   children: [
                     Expanded(
                       child: Card(
-                        color: const Color(0xFFF9F1E7),
+                        color: colorScheme.surface,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12.0),
                         ),
@@ -1211,7 +1256,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                     const SizedBox(width: 8.0),
                     Expanded(
                       child: Card(
-                        color: const Color(0xFFF9F1E7),
+                        color: colorScheme.surface,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12.0),
                         ),
@@ -1278,7 +1323,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                   children: [
                     Expanded(
                       child: Card(
-                        color: const Color(0xFFF9F1E7),
+                        color: colorScheme.surface,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12.0),
                         ),
@@ -1335,19 +1380,68 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                       ),
                     ),
                     const SizedBox(width: 8.0),
-                    Expanded(child: SizedBox()),
+                    Expanded(
+                      child: Card(
+                        color: colorScheme.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        elevation: 4.0,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Full Burning Time',
+                                style: textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.secondary,
+                                ),
+                              ),
+                              const SizedBox(height: 12.0),
+                              InkWell(
+                                onTap: _showBurningTimePicker,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                    horizontal: 12.0,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: colorScheme.primary,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8.0),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        flameRecord.fullBurningTime != null
+                                            ? '${flameRecord.fullBurningTime!.inMinutes ~/ 60}h ${flameRecord.fullBurningTime!.inMinutes % 60}m'
+                                            : 'Select time',
+                                        style: textTheme.bodyMedium,
+                                      ),
+                                      Icon(
+                                        Icons.access_time,
+                                        color: colorScheme.primary,
+                                        size: 20.0,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16.0),
-                Divider(
-                  color: colorScheme.primary.withOpacity(0.3),
-                  thickness: 1.0,
-                  indent: 16.0,
-                  endIndent: 16.0,
-                ),
-                const SizedBox(height: 16.0),
                 Card(
-                  color: const Color(0xFFF9F1E7),
+                  color: colorScheme.surface,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.0),
                   ),
@@ -1358,133 +1452,280 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Scent Throw',
+                          'Records',
                           style: textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colorScheme.secondary,
                           ),
                         ),
                         const SizedBox(height: 12.0),
-                        Text(
-                          'Cold Throw',
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 8.0),
-                        Wrap(
-                          spacing: 8.0,
-                          children: ['Strong', 'Moderate', 'Weak', 'No scent']
-                              .map((value) {
-                                return ChoiceChip(
-                                  label: Text(
-                                    value,
-                                    style: textTheme.bodyMedium?.copyWith(
-                                      color:
-                                          (flameRecord.scentThrow?.coldThrow ??
-                                                  '') ==
-                                              value
-                                          ? colorScheme.onPrimary
-                                          : colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  selected:
-                                      (flameRecord.scentThrow?.coldThrow ??
-                                          '') ==
-                                      value,
-                                  selectedColor: colorScheme.primary,
-                                  backgroundColor: colorScheme.surface,
-                                  showCheckmark: false,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  onSelected: (_) {
-                                    setState(() {
-                                      flameRecord.scentThrow ??= ScentThrow();
-                                      flameRecord.scentThrow!.coldThrow = value;
-                                    });
-                                    _saveFlameRecord();
-                                  },
-                                );
-                              })
-                              .toList(),
-                        ),
-                        const SizedBox(height: 12.0),
-                        Text(
-                          'Hot Throw',
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 8.0),
-                        ...[0.5, 1.0, 2.0, 4.0].map((distance) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '$distance m',
-                                  style: textTheme.bodyLarge?.copyWith(
-                                    color: colorScheme.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 4.0),
-                                Wrap(
-                                  spacing: 8.0,
-                                  children:
-                                      [
-                                        'Strong',
-                                        'Moderate',
-                                        'Weak',
-                                        'No scent',
-                                      ].map((value) {
-                                        return ChoiceChip(
-                                          label: Text(
-                                            value,
-                                            style: textTheme.bodyMedium?.copyWith(
-                                              color:
-                                                  (flameRecord
-                                                              .scentThrow
-                                                              ?.hotThrow[distance] ??
-                                                          '') ==
-                                                      value
-                                                  ? colorScheme.onPrimary
-                                                  : colorScheme.onSurface,
-                                            ),
-                                          ),
-                                          selected:
-                                              (flameRecord
-                                                      .scentThrow
-                                                      ?.hotThrow[distance] ??
-                                                  '') ==
-                                              value,
-                                          selectedColor: colorScheme.primary,
-                                          backgroundColor: colorScheme.surface,
-                                          showCheckmark: false,
-                                          materialTapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                          onSelected: (_) {
-                                            setState(() {
-                                              flameRecord.scentThrow ??=
-                                                  ScentThrow();
-                                              flameRecord
-                                                      .scentThrow!
-                                                      .hotThrow[distance] =
-                                                  value;
-                                            });
-                                            _saveFlameRecord();
-                                          },
-                                        );
-                                      }).toList(),
-                                ),
-                              ],
+                        TextField(
+                          controller: _recordsController,
+                          decoration: InputDecoration(
+                            labelText: 'Notes',
+                            hintText: 'Enter your notes',
+                            border: const OutlineInputBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(8.0),
+                              ),
                             ),
-                          );
-                        }),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12.0,
+                              vertical: 8.0,
+                            ),
+                          ),
+                          style: textTheme.bodyMedium,
+                          maxLines: 2,
+                          onChanged: (value) {
+                            setState(() {
+                              flameRecord.records = value;
+                            });
+                            _saveFlameRecord();
+                          },
+                        ),
                       ],
                     ),
                   ),
                 ),
+                const SizedBox(height: 16.0),
+                Card(
+                  color: colorScheme.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  elevation: 4.0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Photos',
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.secondary,
+                          ),
+                        ),
+                        const SizedBox(height: 12.0),
+                        Center(
+                          child: ElevatedButton.icon(
+                            onPressed: _addPhoto,
+                            icon: Icon(
+                              Icons.add_a_photo,
+                              color: colorScheme.onPrimary,
+                              size: 20.0,
+                            ),
+                            label: Text(
+                              'Add Photo',
+                              style: textTheme.bodyLarge?.copyWith(
+                                color: colorScheme.onPrimary,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30.0),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20.0,
+                                vertical: 10.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12.0),
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
+                          children: flameRecord.photoPaths.map((path) {
+                            return Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                image: DecorationImage(
+                                  image: FileImage(File(path)),
+                                  fit: BoxFit.cover,
+                                ),
+                                border: Border.all(color: colorScheme.primary),
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // const SizedBox(height: 16.0),
+                if (isScented) ...[
+                  Divider(
+                    color: colorScheme.primary.withOpacity(0.3),
+                    thickness: 1.0,
+                    indent: 16.0,
+                    endIndent: 16.0,
+                  ),
+                  const SizedBox(height: 16.0),
+                  Card(
+                    color: colorScheme.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                    elevation: 4.0,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Scent Throw',
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.secondary,
+                            ),
+                          ),
+                          const SizedBox(height: 12.0),
+                          Text(
+                            'Cold Throw',
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8.0),
+                          Center(
+                            child: Wrap(
+                              spacing: 8.0,
+                              children:
+                                  [
+                                    'Strong',
+                                    'Moderate',
+                                    'Weak',
+                                    'No scent',
+                                  ].map((value) {
+                                    return ChoiceChip(
+                                      label: Text(
+                                        value,
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          color:
+                                              (flameRecord
+                                                          .scentThrow
+                                                          ?.coldThrow ??
+                                                      '') ==
+                                                  value
+                                              ? colorScheme.onPrimary
+                                              : colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      selected:
+                                          (flameRecord.scentThrow?.coldThrow ??
+                                              '') ==
+                                          value,
+                                      selectedColor: colorScheme.primary,
+                                      backgroundColor: colorScheme.surface,
+                                      showCheckmark: false,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                      onSelected: (_) {
+                                        setState(() {
+                                          flameRecord.scentThrow ??=
+                                              ScentThrow();
+                                          flameRecord.scentThrow!.coldThrow =
+                                              value;
+                                        });
+                                        _saveFlameRecord();
+                                      },
+                                    );
+                                  }).toList(),
+                            ),
+                          ),
+                          const SizedBox(height: 12.0),
+                          Text(
+                            'Hot Throw',
+                            style: textTheme.bodyLarge?.copyWith(
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 8.0),
+                          ...[0.5, 1.0, 2.0, 4.0].map((distance) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4.0,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '$distance m',
+                                    style: textTheme.bodyLarge?.copyWith(
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4.0),
+                                  Center(
+                                    child: Wrap(
+                                      spacing: 8.0,
+                                      children:
+                                          [
+                                            'Strong',
+                                            'Moderate',
+                                            'Weak',
+                                            'No scent',
+                                          ].map((value) {
+                                            return ChoiceChip(
+                                              label: Text(
+                                                value,
+                                                style: textTheme.bodyMedium
+                                                    ?.copyWith(
+                                                      color:
+                                                          (flameRecord
+                                                                      .scentThrow
+                                                                      ?.hotThrow[distance] ??
+                                                                  '') ==
+                                                              value
+                                                          ? colorScheme
+                                                                .onPrimary
+                                                          : colorScheme
+                                                                .onSurface,
+                                                    ),
+                                              ),
+                                              selected:
+                                                  (flameRecord
+                                                          .scentThrow
+                                                          ?.hotThrow[distance] ??
+                                                      '') ==
+                                                  value,
+                                              selectedColor:
+                                                  colorScheme.primary,
+                                              backgroundColor:
+                                                  colorScheme.surface,
+                                              showCheckmark: false,
+                                              materialTapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                              onSelected: (_) {
+                                                setState(() {
+                                                  flameRecord.scentThrow ??=
+                                                      ScentThrow();
+                                                  flameRecord
+                                                          .scentThrow!
+                                                          .hotThrow[distance] =
+                                                      value;
+                                                });
+                                                _saveFlameRecord();
+                                              },
+                                            );
+                                          }).toList(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 if (isContainerOrPillar) ...[
                   const SizedBox(height: 16.0),
                   Divider(
@@ -1495,7 +1736,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                   ),
                   const SizedBox(height: 16.0),
                   Card(
-                    color: const Color(0xFFF9F1E7),
+                    color: colorScheme.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.0),
                     ),
@@ -1571,7 +1812,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                                               controller:
                                                   _diameterControllers[time],
                                               decoration: InputDecoration(
-                                                labelText: 'Melt Diameter (cm)',
+                                                labelText: 'Melt Diameter (mm)',
                                                 border: OutlineInputBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
@@ -1639,7 +1880,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                                               controller:
                                                   _depthControllers[time],
                                               decoration: InputDecoration(
-                                                labelText: 'Melt Depth (cm)',
+                                                labelText: 'Melt Depth (mm)',
                                                 border: OutlineInputBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(
@@ -1822,227 +2063,40 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                   ),
                 ],
                 const SizedBox(height: 16.0),
-                Card(
-                  color: const Color(0xFFF9F1E7),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  elevation: 4.0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Full Burning Time',
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.secondary,
-                          ),
-                        ),
-                        const SizedBox(height: 12.0),
-                        InkWell(
-                          onTap: _showBurningTimePicker,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 8.0,
-                              horizontal: 12.0,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: colorScheme.primary),
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  flameRecord.fullBurningTime != null
-                                      ? '${flameRecord.fullBurningTime!.inMinutes ~/ 60}h ${flameRecord.fullBurningTime!.inMinutes % 60}m'
-                                      : 'Select time',
-                                  style: textTheme.bodyMedium,
-                                ),
-                                Icon(
-                                  Icons.access_time,
-                                  color: colorScheme.primary,
-                                  size: 20.0,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Card(
-                  color: const Color(0xFFF9F1E7),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  elevation: 4.0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Records',
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.secondary,
-                          ),
-                        ),
-                        const SizedBox(height: 12.0),
-                        TextField(
-                          controller: _recordsController,
-                          decoration: InputDecoration(
-                            labelText: 'Notes',
-                            hintText: 'Enter your notes',
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(8.0),
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12.0,
-                              vertical: 8.0,
-                            ),
-                          ),
-                          style: textTheme.bodyMedium,
-                          maxLines: 2,
-                          onChanged: (value) {
-                            setState(() {
-                              flameRecord.records = value;
-                            });
-                            _saveFlameRecord();
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
-                Card(
-                  color: const Color(0xFFF9F1E7),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  elevation: 4.0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Photos',
-                          style: textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.secondary,
-                          ),
-                        ),
-                        const SizedBox(height: 12.0),
-                        Center(
-                          child: ElevatedButton.icon(
-                            onPressed: _addPhoto,
-                            icon: Icon(
-                              Icons.add_a_photo,
-                              color: colorScheme.onPrimary,
-                              size: 20.0,
-                            ),
-                            label: Text(
-                              'Add Photo',
-                              style: textTheme.bodyLarge?.copyWith(
-                                color: colorScheme.onPrimary,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colorScheme.primary,
-                              foregroundColor: colorScheme.onPrimary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30.0),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20.0,
-                                vertical: 10.0,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12.0),
-                        Wrap(
-                          spacing: 8.0,
-                          runSpacing: 8.0,
-                          children: flameRecord.photoPaths.map((path) {
-                            return Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                image: DecorationImage(
-                                  image: FileImage(File(path)),
-                                  fit: BoxFit.cover,
-                                ),
-                                border: Border.all(color: colorScheme.primary),
-                                borderRadius: BorderRadius.circular(8.0),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16.0),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: _markAsFlamed,
-                      icon: Icon(
-                        Icons.check,
-                        color: colorScheme.onPrimary,
-                        size: 20.0,
-                      ),
-                      label: Text(
-                        'Done',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onPrimary,
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _clearFlameRecord,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.error),
+                          shape: const StadiumBorder(),
+                          padding: const EdgeInsets.symmetric(vertical: 14.0),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0,
-                          vertical: 10.0,
+                        child: Text(
+                          'Clear',
+                          style: textTheme.titleLarge?.copyWith(
+                            color: colorScheme.error,
+                          ),
                         ),
                       ),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: _clearFlameRecord,
-                      icon: Icon(
-                        Icons.clear,
-                        color: colorScheme.onPrimary,
-                        size: 20.0,
-                      ),
-                      label: Text(
-                        'Clear',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onPrimary,
+                    const SizedBox(width: 16.0),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _markAsFlamed,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                          shape: const StadiumBorder(),
+                          padding: const EdgeInsets.symmetric(vertical: 14.0),
                         ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.error,
-                        foregroundColor: colorScheme.onPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0,
-                          vertical: 10.0,
+                        child: Text(
+                          'Done',
+                          style: textTheme.titleLarge?.copyWith(
+                            color: colorScheme.onPrimary,
+                          ),
                         ),
                       ),
                     ),

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:candle_lab_app/models/notification_data.dart';
 import 'firestore_service.dart';
+import 'dart:async';
 
 class NotificationService {
   static final FirestoreService _firestoreService = FirestoreService();
@@ -47,23 +48,7 @@ class NotificationService {
     if (user == null) {
       return Stream.value([]);
     }
-    return _firestoreService.getAllNotificationsStream().asyncMap((
-      notifications,
-    ) async {
-      final now = DateTime.now();
-      for (var notification in notifications) {
-        if (notification.burningDay.isBefore(now)) {
-          // Only mark as unread if it was never manually read
-          if (notification.isRead &&
-              (notification.manuallyReadAt == null ||
-                  notification.manuallyReadAt!.isBefore(
-                    notification.burningDay,
-                  ))) {
-            await _firestoreService.markNotificationAsUnread(notification.id!);
-            notification.isRead = false;
-          }
-        }
-      }
+    return _firestoreService.getAllNotificationsStream().map((notifications) {
       // Sort with unread first, then by burning date
       notifications.sort((a, b) {
         if (a.isRead != b.isRead) {
@@ -72,6 +57,29 @@ class NotificationService {
         return a.burningDay.compareTo(b.burningDay);
       });
       return notifications;
+    });
+  }
+
+  // Add this new method to notification_service.dart
+  static void startNotificationWatcher() {
+    Timer.periodic(const Duration(minutes: 1), (timer) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final now = DateTime.now();
+      final notifications = await _firestoreService.getAllNotificationsOnce();
+
+      for (var notification in notifications) {
+        if (notification.burningDay.isBefore(now)) {
+          if (notification.isRead &&
+              (notification.manuallyReadAt == null ||
+                  notification.manuallyReadAt!.isBefore(
+                    notification.burningDay,
+                  ))) {
+            await _firestoreService.markNotificationAsUnread(notification.id!);
+          }
+        }
+      }
     });
   }
 }

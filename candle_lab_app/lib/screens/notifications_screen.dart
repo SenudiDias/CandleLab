@@ -94,9 +94,6 @@ class _MakingScreen8State extends State<NotificationsScreen> {
               itemCount: notifications.length,
               itemBuilder: (context, index) {
                 final notification = notifications[index];
-                final isOverdue = notification.burningDay.isBefore(
-                  DateTime.now(),
-                );
                 return Card(
                   elevation: 2.0,
                   margin: const EdgeInsets.only(bottom: 8.0),
@@ -176,7 +173,6 @@ class _MakingScreen8State extends State<NotificationsScreen> {
                   notification.isRead = true;
                 }
                 Navigator.of(context).pop();
-                if (mounted) setState(() {}); // Refresh the UI
               },
               child: const Text('OK'),
             ),

@@ -31,6 +31,7 @@ class NotificationAppBar extends StatelessWidget
         title,
         style: const TextStyle(fontFamily: 'Poppins', color: Colors.white),
       ),
+      // Update the leading IconButton in notification_app_bar.dart
       leading: Builder(
         builder: (context) => IconButton(
           icon: StreamBuilder<int>(
@@ -51,14 +52,14 @@ class NotificationAppBar extends StatelessWidget
                           borderRadius: BorderRadius.circular(8),
                         ),
                         constraints: const BoxConstraints(
-                          minWidth: 12,
-                          minHeight: 12,
+                          minWidth: 16,
+                          minHeight: 16,
                         ),
                         child: Text(
                           unreadCount > 9 ? '9+' : unreadCount.toString(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 4,
+                            fontSize: 8,
                             fontWeight: FontWeight.bold,
                           ),
                           textAlign: TextAlign.center,

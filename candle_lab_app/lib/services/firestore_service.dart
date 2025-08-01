@@ -153,6 +153,7 @@ class FirestoreService {
         if (data['userId'] == user.uid) {
           await _notificationsCollection.doc(notificationId).update({
             'isRead': true,
+            'manuallyReadAt': DateTime.now().toIso8601String(),
           });
           print('Notification $notificationId marked as read');
         } else {
@@ -266,5 +267,30 @@ class FirestoreService {
         return matches;
       }).toList();
     });
+  }
+
+  // Update the markNotificationAsUnread method in firestore_service.dart
+  Future<void> markNotificationAsUnread(String notificationId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    try {
+      final doc = await _notificationsCollection.doc(notificationId).get();
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        // Only mark as unread if it was never manually read
+        if (data['userId'] == user.uid && data['manuallyReadAt'] == null) {
+          await _notificationsCollection.doc(notificationId).update({
+            'isRead': false,
+            'updatedAt': DateTime.now().toIso8601String(),
+          });
+          print('Notification $notificationId marked as unread');
+        }
+      }
+    } catch (e) {
+      print('Error marking notification as unread: $e');
+      throw Exception('Failed to mark notification as unread: $e');
+    }
   }
 }

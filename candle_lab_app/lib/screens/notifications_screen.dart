@@ -88,6 +88,7 @@ class _MakingScreen8State extends State<NotificationsScreen> {
                 ),
               );
             }
+            // Update the ListView.builder in notifications_screen.dart
             return ListView.builder(
               padding: const EdgeInsets.all(16.0),
               itemCount: notifications.length,
@@ -113,10 +114,13 @@ class _MakingScreen8State extends State<NotificationsScreen> {
                     ),
                     subtitle: Text(
                       'Ready to burn on ${DateFormat('MMM d, yyyy, h:mm a').format(notification.burningDay)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10.0,
                         fontFamily: 'Poppins',
-                        color: Color(0xFF5D4037),
+                        color: const Color(0xFF5D4037),
+                        fontWeight: notification.isRead
+                            ? FontWeight.normal
+                            : FontWeight.bold,
                       ),
                     ),
                     tileColor: notification.isRead
@@ -135,6 +139,7 @@ class _MakingScreen8State extends State<NotificationsScreen> {
     );
   }
 
+  // Update the _showNotificationDetails method in notifications_screen.dart
   Future<void> _showNotificationDetails(
     BuildContext context,
     NotificationData notification,
@@ -149,66 +154,31 @@ class _MakingScreen8State extends State<NotificationsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text(
-            'Notification Details',
-            style: TextStyle(fontFamily: 'Poppins', color: Color(0xFF5D4037)),
-          ),
+          title: const Text('Notification Details'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Sample Name: ${notification.candleName}',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Color(0xFF5D4037),
-                ),
-              ),
-              Text(
-                'Candle Type: ${notification.candleType}',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Color(0xFF5D4037),
-                ),
-              ),
+              Text('Sample Name: ${notification.candleName}'),
+              Text('Candle Type: ${notification.candleType}'),
               Text(
                 'Batch Date: ${DateFormat('MMM d, yyyy').format(batchDate)}',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Color(0xFF5D4037),
-                ),
               ),
-              Text(
-                'Batch Time: $batchTime',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Color(0xFF5D4037),
-                ),
-              ),
-              Text(
-                'Burn Date: $burnDate',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Color(0xFF5D4037),
-                ),
-              ),
+              Text('Batch Time: $batchTime'),
+              Text('Burn Date: $burnDate'),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop();
                 if (!notification.isRead) {
                   await NotificationService.markAsRead(notification.id!);
+                  // Update local state immediately
+                  notification.isRead = true;
                 }
+                Navigator.of(context).pop();
+                if (mounted) setState(() {}); // Refresh the UI
               },
-              child: const Text(
-                'OK',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  color: Color(0xFF795548),
-                ),
-              ),
+              child: const Text('OK'),
             ),
           ],
         );

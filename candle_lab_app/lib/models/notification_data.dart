@@ -9,6 +9,7 @@ class NotificationData {
   DateTime burningDay; // When the candle is ready
   bool isRead; // Whether the notification has been read
   DateTime createdAt; // When the notification was created
+  DateTime? manuallyReadAt;
 
   NotificationData({
     this.id,
@@ -19,6 +20,7 @@ class NotificationData {
     required this.burningDay,
     this.isRead = false,
     required this.createdAt,
+    this.manuallyReadAt,
   });
 
   Map<String, dynamic> toJson() => {
@@ -30,6 +32,7 @@ class NotificationData {
     'burningDay': burningDay.toIso8601String(),
     'isRead': isRead,
     'createdAt': createdAt.toIso8601String(),
+    'manuallyReadAt': manuallyReadAt?.toIso8601String(),
   };
 
   factory NotificationData.fromJson(Map<String, dynamic> json) =>
@@ -43,5 +46,8 @@ class NotificationData {
         burningDay: DateTime.parse(json['burningDay']),
         isRead: json['isRead'] ?? false,
         createdAt: DateTime.parse(json['createdAt']),
+        manuallyReadAt: json['manuallyReadAt'] != null
+            ? DateTime.parse(json['manuallyReadAt'])
+            : null,
       );
 }

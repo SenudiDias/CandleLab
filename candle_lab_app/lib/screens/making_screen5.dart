@@ -5,6 +5,7 @@ import 'custom_drawer.dart';
 import 'making_screen6.dart';
 import 'making_screen7.dart';
 import '../models/candle_data.dart';
+import '../services/notification_service.dart';
 import 'dart:async';
 
 class MakingScreen5 extends StatefulWidget {
@@ -163,6 +164,47 @@ class _MakingScreen5State extends State<MakingScreen5> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Making - Scent Details'),
+        leading: Builder(
+          builder: (context) => StreamBuilder<int>(
+            stream: NotificationService.unreadCountStream,
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.menu),
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 6,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
         actions: [
           StreamBuilder<DateTime>(
             stream: _dateTimeStream(),

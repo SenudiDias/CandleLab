@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'custom_drawer.dart';
 import 'making_screen3.dart';
 import '../models/candle_data.dart';
+
 import 'dart:async';
+import '../services/notification_service.dart';
 
 class MakingScreen2 extends StatefulWidget {
   final CandleData candleData;
@@ -156,9 +158,44 @@ class _MakingScreen2State extends State<MakingScreen2> {
       appBar: AppBar(
         title: const Text('Making - Wax Details'),
         leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+          builder: (context) => StreamBuilder<int>(
+            stream: NotificationService.unreadCountStream,
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.menu),
+                    onPressed: () => Scaffold.of(context).openDrawer(),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 6,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ),
         actions: [

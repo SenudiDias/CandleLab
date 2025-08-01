@@ -5,6 +5,7 @@ import 'custom_drawer.dart';
 import 'making_screen2.dart';
 import '../models/candle_data.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
 import 'login_screen.dart';
 import 'dart:async';
 
@@ -237,7 +238,42 @@ class _MakingScreenState extends State<MakingScreen>
         title: const Text('Making'),
         leading: Builder(
           builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: colorScheme.onPrimary),
+            icon: StreamBuilder<int>(
+              stream: NotificationService.unreadCountStream,
+              builder: (context, snapshot) {
+                final unreadCount = snapshot.data ?? 0;
+                return Stack(
+                  children: [
+                    const Icon(Icons.menu, color: Colors.white),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unreadCount > 9 ? '9+' : unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),

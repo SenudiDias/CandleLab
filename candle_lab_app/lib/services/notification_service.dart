@@ -41,33 +41,36 @@ class NotificationService {
     await _firestoreService.markNotificationAsRead(notificationId);
   }
 
-  // Stream of all notifications with unread window logic
+  // Update the getNotifications() method in notification_service.dart
   static Stream<List<NotificationData>> getNotifications() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return Stream.value([]);
     }
-    return _firestoreService.getAllNotificationsStream().map((notifications) {
+    return _firestoreService.getAllNotificationsStream().asyncMap((
+      notifications,
+    ) async {
       final now = DateTime.now();
       for (var notification in notifications) {
-        final oneHourBefore = notification.burningDay.subtract(
-          const Duration(hours: 1),
-        );
-        final oneHourAfter = notification.burningDay.add(
-          const Duration(hours: 1),
-        );
-        if (now.isAfter(oneHourBefore) &&
-            now.isBefore(oneHourAfter) &&
-            notification.isRead) {
-          _firestoreService.markNotificationAsRead(notification.id!).then((_) {
+        if (notification.burningDay.isBefore(now)) {
+          // Only mark as unread if it was never manually read
+          if (notification.isRead &&
+              (notification.manuallyReadAt == null ||
+                  notification.manuallyReadAt!.isBefore(
+                    notification.burningDay,
+                  ))) {
+            await _firestoreService.markNotificationAsUnread(notification.id!);
             notification.isRead = false;
-          });
-        } else if (now.isAfter(oneHourAfter) && !notification.isRead) {
-          _firestoreService.markNotificationAsRead(notification.id!).then((_) {
-            notification.isRead = true;
-          });
+          }
         }
       }
+      // Sort with unread first, then by burning date
+      notifications.sort((a, b) {
+        if (a.isRead != b.isRead) {
+          return a.isRead ? 1 : -1;
+        }
+        return a.burningDay.compareTo(b.burningDay);
+      });
       return notifications;
     });
   }

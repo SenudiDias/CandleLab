@@ -125,7 +125,6 @@ class _MakingScreen8State extends State<MakingScreen8> {
       return;
     }
 
-    // Update cooling and curing details
     widget.candleData.coolingCuringDetail = CoolingCuringDetail(
       coolDownTime: double.tryParse(_coolDownController.text) ?? 0.0,
       curingDays: int.tryParse(_curingController.text) ?? 0,
@@ -134,7 +133,6 @@ class _MakingScreen8State extends State<MakingScreen8> {
       photoPaths: _photoPaths,
     );
 
-    // Nullify details if their respective flags are false
     if (widget.candleData.isScented == false) {
       widget.candleData.scentDetail = null;
     }
@@ -150,14 +148,16 @@ class _MakingScreen8State extends State<MakingScreen8> {
     try {
       await FirestoreService().saveCandleData(widget.candleData);
 
-      if (_calculatedBurningDay != null && _selectedReminderTime != null) {
-        final reminderDateTime = DateTime(
-          _calculatedBurningDay!.year,
-          _calculatedBurningDay!.month,
-          _calculatedBurningDay!.day,
-          _selectedReminderTime!.hour,
-          _selectedReminderTime!.minute,
-        );
+      if (_selectedReminderTime != null || _calculatedBurningDay != null) {
+        final notificationTime = _selectedReminderTime != null
+            ? DateTime(
+                _calculatedBurningDay!.year,
+                _calculatedBurningDay!.month,
+                _calculatedBurningDay!.day,
+                _selectedReminderTime!.hour,
+                _selectedReminderTime!.minute,
+              )
+            : _calculatedBurningDay!;
 
         await NotificationService.scheduleNotification(
           id:
@@ -166,7 +166,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
           title: 'Curing Complete!',
           body:
               'Your candle "${widget.candleData.sampleName}" is ready for burning.',
-          scheduledDate: reminderDateTime,
+          scheduledDate: notificationTime,
           candleName: widget.candleData.sampleName ?? 'Unknown Candle',
           candleType: widget.candleData.candleType ?? 'Unknown',
         );

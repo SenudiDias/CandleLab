@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 class WaxDetail {
@@ -233,7 +235,8 @@ class TemperatureDetail {
   double pouringF;
   double ambientTempC;
   double ambientTempF;
-  List<String> photoPaths;
+  List<String> photoUrls;
+  List<File> tempImageFiles = [];
 
   TemperatureDetail({
     this.maxHeatedC = 0.0,
@@ -244,8 +247,10 @@ class TemperatureDetail {
     this.pouringF = 0.0,
     this.ambientTempC = 0.0,
     this.ambientTempF = 0.0,
-    this.photoPaths = const [],
-  });
+    List<String>? photoUrls,
+    List<File>? tempImageFiles,
+  }) : photoUrls = photoUrls ?? [],
+       tempImageFiles = tempImageFiles ?? [];
 
   Map<String, dynamic> toJson() => {
     'maxHeatedC': maxHeatedC,
@@ -256,7 +261,7 @@ class TemperatureDetail {
     'pouringF': pouringF,
     'ambientTempC': ambientTempC,
     'ambientTempF': ambientTempF,
-    'photoPaths': photoPaths,
+    'photoUrls': photoUrls,
   };
 
   factory TemperatureDetail.fromJson(Map<String, dynamic> json) =>
@@ -269,7 +274,7 @@ class TemperatureDetail {
         pouringF: (json['pouringF'] as num?)?.toDouble() ?? 0.0,
         ambientTempC: (json['ambientTempC'] as num?)?.toDouble() ?? 0.0,
         ambientTempF: (json['ambientTempF'] as num?)?.toDouble() ?? 0.0,
-        photoPaths: List<String>.from(json['photoPaths'] ?? []),
+        photoUrls: List<String>.from(json['photoUrls'] ?? []),
       );
 }
 
@@ -278,15 +283,18 @@ class CoolingCuringDetail {
   int curingDays;
   DateTime? burningDay;
   TimeOfDay? reminderTime;
-  List<String> photoPaths;
+  List<String> photoUrls;
+  List<File> tempImageFiles = [];
 
   CoolingCuringDetail({
     this.coolDownTime = 0.0,
     this.curingDays = 0,
     this.burningDay,
     this.reminderTime,
-    this.photoPaths = const [],
-  });
+    List<String>? photoUrls,
+    List<File>? tempImageFiles,
+  }) : photoUrls = photoUrls ?? [],
+       tempImageFiles = tempImageFiles ?? [];
 
   Map<String, dynamic> toJson() => {
     'coolDownTime': coolDownTime,
@@ -295,7 +303,7 @@ class CoolingCuringDetail {
     'reminderTime': reminderTime != null
         ? {'hour': reminderTime!.hour, 'minute': reminderTime!.minute}
         : null,
-    'photoPaths': photoPaths,
+    'photoUrls': photoUrls,
   };
 
   factory CoolingCuringDetail.fromJson(Map<String, dynamic> json) =>
@@ -311,7 +319,7 @@ class CoolingCuringDetail {
                 minute: (json['reminderTime']['minute'] as num?)?.toInt() ?? 0,
               )
             : null,
-        photoPaths: List<String>.from(json['photoPaths'] ?? []),
+        photoUrls: List<String>.from(json['photoUrls'] ?? []),
       );
 }
 

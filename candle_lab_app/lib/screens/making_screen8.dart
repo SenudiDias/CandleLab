@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'custom_drawer.dart';
 import 'making_screen9.dart';
 import '../models/candle_data.dart';
@@ -9,6 +10,8 @@ import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
 import 'login_screen.dart';
 import 'dart:async';
+import 'dart:io';
+import '../services/image_service.dart';
 
 class MakingScreen8 extends StatefulWidget {
   final CandleData candleData;
@@ -19,6 +22,61 @@ class MakingScreen8 extends StatefulWidget {
   State<MakingScreen8> createState() => _MakingScreen8State();
 }
 
+class _SaveProgressDialog extends StatefulWidget {
+  final int totalSteps;
+  final Future<bool> Function(void Function(int)) onSave;
+
+  const _SaveProgressDialog({required this.totalSteps, required this.onSave});
+
+  @override
+  State<_SaveProgressDialog> createState() => _SaveProgressDialogState();
+}
+
+class _SaveProgressDialogState extends State<_SaveProgressDialog> {
+  int _completedSteps = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startSaveOperation();
+  }
+
+  Future<void> _startSaveOperation() async {
+    final success = await widget.onSave(_updateProgress);
+    if (mounted) {
+      Navigator.of(context).pop(success);
+    }
+  }
+
+  void _updateProgress(int steps) {
+    if (mounted) {
+      setState(() {
+        _completedSteps = steps;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Saving Candle Data...'),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: (_completedSteps / widget.totalSteps).clamp(0.0, 1.0),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${((_completedSteps / widget.totalSteps) * 100).toStringAsFixed(0)}%',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MakingScreen8State extends State<MakingScreen8> {
   final _formKey = GlobalKey<FormState>();
   final _coolDownController = TextEditingController();
@@ -27,9 +85,12 @@ class _MakingScreen8State extends State<MakingScreen8> {
 
   bool _isSaving = false;
   TimeOfDay? _selectedReminderTime;
-  List<String> _photoPaths = [];
+  List<String> _photoUrls = [];
+  final List<File> _tempImageFiles = [];
   DateTime? _calculatedBurningDay;
   bool _isContentVisible = false;
+  StreamSubscription? _candleSubscription;
+  final int _totalSteps = 1;
 
   @override
   void initState() {
@@ -44,6 +105,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
         });
       }
     });
+    _subscribeToCandles();
   }
 
   void _initializeData() {
@@ -55,7 +117,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
           ? DateFormat('MMM d, yyyy').format(detail.burningDay!)
           : '';
       _selectedReminderTime = detail.reminderTime;
-      _photoPaths = List.from(detail.photoPaths);
+      _photoUrls = List.from(detail.photoUrls);
       _calculatedBurningDay = detail.burningDay;
     }
   }
@@ -90,74 +152,175 @@ class _MakingScreen8State extends State<MakingScreen8> {
     }
   }
 
-  void _addPhoto() {
-    setState(() {
-      _photoPaths.add('cooling_photo_${_photoPaths.length + 1}.jpg');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Photo added (simulated)')));
-    });
+  Future<void> _addPhoto({bool fromCamera = false}) async {
+    final image = await ImageService.pickImage(fromCamera: fromCamera);
+    if (image != null) {
+      setState(() => _tempImageFiles.add(image));
+    }
   }
 
-  void _removePhoto(String path) {
-    setState(() {
-      _photoPaths.remove(path);
-    });
+  Future<void> _showEnlargedPhoto({String? url, File? file}) async {
+    if (url == null && file == null) return;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                child: url != null
+                    ? CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) =>
+                            const Center(child: CircularProgressIndicator()),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error),
+                      )
+                    : Image.file(file!, fit: BoxFit.contain),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 30),
+                  onPressed: () async {
+                    setState(() => _isSaving = true);
+                    try {
+                      if (url != null) {
+                        await ImageService.deleteImage(url);
+                        setState(() => _photoUrls.remove(url));
+                      } else if (file != null) {
+                        setState(() => _tempImageFiles.remove(file));
+                      }
+                      Navigator.pop(context);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to delete photo: $e')),
+                      );
+                    } finally {
+                      setState(() => _isSaving = false);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _saveDataAndNavigate() async {
     if (_isSaving || !_formKey.currentState!.validate()) return;
 
-    setState(() => _isSaving = true);
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please log in to save data')),
-        );
-      }
-      setState(() => _isSaving = false);
-      return;
-    }
-
-    widget.candleData.coolingCuringDetail = CoolingCuringDetail(
-      coolDownTime: double.tryParse(_coolDownController.text) ?? 0.0,
-      curingDays: int.tryParse(_curingController.text) ?? 0,
-      burningDay: _calculatedBurningDay,
-      reminderTime: _selectedReminderTime,
-      photoPaths: _photoPaths,
-    );
-
-    if (widget.candleData.isScented == false) {
-      widget.candleData.scentDetail = null;
-    }
-    if (widget.candleData.isWicked == false) {
-      widget.candleData.wickDetail = null;
-    }
-    if (widget.candleData.isColoured == false) {
-      widget.candleData.colourDetail = null;
-    }
-
-    widget.candleData.totalCost = widget.candleData.calculateTotalCost();
+    setState(() {
+      _isSaving = true;
+    });
 
     try {
-      await FirestoreService().saveCandleData(widget.candleData);
+      // Calculate total steps
+      int totalSteps = 2; // Initial and final saves
+      totalSteps +=
+          widget.candleData.temperatureDetail?.tempImageFiles.length ?? 0;
+      totalSteps += _tempImageFiles.length;
 
-      if (_selectedReminderTime != null || _calculatedBurningDay != null) {
-        final notificationTime = _selectedReminderTime != null
-            ? DateTime(
-                _calculatedBurningDay!.year,
-                _calculatedBurningDay!.month,
-                _calculatedBurningDay!.day,
-                _selectedReminderTime!.hour,
-                _selectedReminderTime!.minute,
-              )
-            : _calculatedBurningDay!;
+      // Show progress dialog
+      final saveSuccess = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return _SaveProgressDialog(
+            totalSteps: totalSteps,
+            onSave: (updateProgress) => _performSaveOperation(updateProgress),
+          );
+        },
+      );
+
+      if (saveSuccess == true && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MakingScreen9(candleData: widget.candleData),
+          ),
+        );
+      } else if (saveSuccess == false && mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to save data')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<bool> _performSaveOperation(void Function(int) updateProgress) async {
+    int completedSteps = 0;
+    try {
+      // Update candle data
+      widget.candleData.coolingCuringDetail = CoolingCuringDetail(
+        coolDownTime: double.tryParse(_coolDownController.text) ?? 0.0,
+        curingDays: int.tryParse(_curingController.text) ?? 0,
+        burningDay: _calculatedBurningDay,
+        reminderTime: _selectedReminderTime,
+        photoUrls: _photoUrls,
+        tempImageFiles: [],
+      );
+
+      widget.candleData.totalCost = widget.candleData.calculateTotalCost();
+
+      // Initial save if new candle
+      if (widget.candleData.id == null) {
+        await FirestoreService().saveCandleData(widget.candleData);
+        updateProgress(++completedSteps);
+      }
+
+      // Upload temperature images
+      if (widget.candleData.temperatureDetail?.tempImageFiles.isNotEmpty ??
+          false) {
+        final urls = await ImageService.uploadImages(
+          widget.candleData.temperatureDetail!.tempImageFiles,
+          'candles/${widget.candleData.userId}/${widget.candleData.id}/images/temp',
+          onProgress: (index, total) {
+            updateProgress(++completedSteps);
+          },
+        );
+        widget.candleData.temperatureDetail!.photoUrls.addAll(urls);
+        widget.candleData.temperatureDetail!.tempImageFiles.clear();
+      }
+
+      // Upload cooling images
+      if (_tempImageFiles.isNotEmpty) {
+        final urls = await ImageService.uploadImages(
+          _tempImageFiles,
+          'candles/${widget.candleData.userId}/${widget.candleData.id}/images/cool',
+          onProgress: (index, total) {
+            updateProgress(++completedSteps);
+          },
+        );
+        widget.candleData.coolingCuringDetail!.photoUrls.addAll(urls);
+        _tempImageFiles.clear();
+      }
+
+      // Final save
+      await FirestoreService().saveCandleData(widget.candleData);
+      updateProgress(++completedSteps);
+
+      // Schedule notification if needed
+      if (_selectedReminderTime != null && _calculatedBurningDay != null) {
+        final notificationTime = DateTime(
+          _calculatedBurningDay!.year,
+          _calculatedBurningDay!.month,
+          _calculatedBurningDay!.day,
+          _selectedReminderTime!.hour,
+          _selectedReminderTime!.minute,
+        );
 
         await NotificationService.scheduleNotification(
           id:
@@ -171,25 +334,20 @@ class _MakingScreen8State extends State<MakingScreen8> {
           candleType: widget.candleData.candleType ?? 'Unknown',
         );
       }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Candle data saved successfully')),
-        );
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MakingScreen9(candleData: widget.candleData),
-          ),
-        );
-      }
+
+      return true;
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error saving data: $e')));
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
+      print('Save process failed: $e');
+      return false;
+    }
+  }
+
+  void _subscribeToCandles() {
+    if (mounted) {
+      _candleSubscription?.cancel();
+      _candleSubscription = FirestoreService()
+          .getCandlesByUser(widget.candleData.userId ?? '')
+          .listen((snapshot) {});
     }
   }
 
@@ -202,6 +360,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
 
   @override
   void dispose() {
+    _candleSubscription?.cancel();
     _curingController.removeListener(_updateBurningDay);
     _coolDownController.dispose();
     _curingController.dispose();
@@ -329,9 +488,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
                     ),
                   ),
                   const SizedBox(height: 24.0),
-
                   _buildCoolingForm(),
-
                   const SizedBox(height: 32.0),
                   Row(
                     children: [
@@ -452,28 +609,87 @@ class _MakingScreen8State extends State<MakingScreen8> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _addPhoto,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Add Photo'),
+            child: Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.add_a_photo_outlined),
+                onPressed: () {
+                  final RenderBox button =
+                      context.findRenderObject() as RenderBox;
+                  final RenderBox overlay =
+                      Overlay.of(context).context.findRenderObject()
+                          as RenderBox;
+                  final RelativeRect position = RelativeRect.fromRect(
+                    Rect.fromPoints(
+                      button.localToGlobal(Offset.zero, ancestor: overlay),
+                      button.localToGlobal(
+                        button.size.bottomRight(Offset.zero),
+                        ancestor: overlay,
+                      ),
+                    ),
+                    Offset.zero & overlay.size,
+                  );
+
+                  showMenu<String>(
+                    context: context,
+                    position: position,
+                    items: [
+                      const PopupMenuItem<String>(
+                        value: 'camera',
+                        child: ListTile(
+                          leading: Icon(Icons.camera_alt),
+                          title: Text('Take a photo'),
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'gallery',
+                        child: ListTile(
+                          leading: Icon(Icons.photo_library),
+                          title: Text('Choose from gallery'),
+                        ),
+                      ),
+                    ],
+                  ).then((value) {
+                    if (value == 'camera') {
+                      _addPhoto(fromCamera: true);
+                    } else if (value == 'gallery') {
+                      _addPhoto(fromCamera: false);
+                    }
+                  });
+                },
+              ),
             ),
           ),
-          if (_photoPaths.isNotEmpty) ...[
+          if (_photoUrls.isNotEmpty || _tempImageFiles.isNotEmpty) ...[
             const SizedBox(height: 16.0),
             Wrap(
-              spacing: 8.0,
-              runSpacing: 8.0,
-              children: _photoPaths.map((path) {
-                return Chip(
-                  label: Text(path),
-                  onDeleted: () => _removePhoto(path),
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.1),
-                  deleteIconColor: Theme.of(context).colorScheme.primary,
-                  labelStyle: Theme.of(context).textTheme.bodyMedium,
-                );
-              }).toList(),
+              children: [
+                ..._tempImageFiles.map(
+                  (file) => Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: GestureDetector(
+                      onTap: () => _showEnlargedPhoto(file: file),
+                      child: Image.file(file, width: 60, height: 60),
+                    ),
+                  ),
+                ),
+                ..._photoUrls.map(
+                  (url) => Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: GestureDetector(
+                      onTap: () => _showEnlargedPhoto(url: url),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        width: 60,
+                        height: 60,
+                        placeholder: (context, url) =>
+                            const CircularProgressIndicator(),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],

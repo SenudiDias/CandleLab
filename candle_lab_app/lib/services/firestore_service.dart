@@ -18,9 +18,11 @@ class FirestoreService {
       throw Exception('User not authenticated');
     }
     try {
-      candleData.userId = user.uid; // Ensure userId is set
+      candleData.userId = user.uid;
       final data = candleData.toJson();
       data['createdAt'] = DateTime.now().toIso8601String();
+      data['version'] =
+          FieldValue.serverTimestamp(); // Add version for conflict detection
       if (candleData.id == null) {
         final docRef = await _candlesCollection.add(data);
         candleData.id = docRef.id;
@@ -28,9 +30,16 @@ class FirestoreService {
         await _candlesCollection.doc(docRef.id).set(data);
         print('Candle saved with ID: ${candleData.id}');
       } else {
-        data['id'] = candleData.id;
-        await _candlesCollection.doc(candleData.id).set(data);
-        print('Candle updated with ID: ${candleData.id}');
+        final docSnapshot = await _candlesCollection.doc(candleData.id).get();
+        if (docSnapshot.exists) {
+          final existingData = docSnapshot.data() as Map<String, dynamic>;
+          if (existingData['version'] != data['version']) {
+            // Skip if version matches
+            data['id'] = candleData.id;
+            await _candlesCollection.doc(candleData.id).set(data);
+            print('Candle updated with ID: ${candleData.id}');
+          }
+        }
       }
     } catch (e) {
       print('Error saving candle data: $e');

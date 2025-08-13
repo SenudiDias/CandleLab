@@ -1,1 +1,40 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"candlelab-c846c","appId":"1:231886046583:android:93c04d21260a1fb8d34d72","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"candlelab-c846c","configurations":{"android":"1:231886046583:android:93c04d21260a1fb8d34d72","ios":"1:231886046583:ios:b8ec47ab1105c24ed34d72","macos":"1:231886046583:ios:b8ec47ab1105c24ed34d72","web":"1:231886046583:web:406e64d42bce569cd34d72","windows":"1:231886046583:web:3bcdce3e905f7de4d34d72"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "candlelab-c846c",
+          "appId": "1:231886046583:android:93c04d21260a1fb8d34d72",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "candlelab-c846c",
+          "configurations": {
+            "android": "1:231886046583:android:93c04d21260a1fb8d34d72",
+            "ios": "1:231886046583:ios:b8ec47ab1105c24ed34d72",
+            "macos": "1:231886046583:ios:b8ec47ab1105c24ed34d72",
+            "web": "1:231886046583:web:406e64d42bce569cd34d72",
+            "windows": "1:231886046583:web:3bcdce3e905f7de4d34d72"
+          }
+        }
+      }
+    }
+  }
+}

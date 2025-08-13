@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +7,10 @@ import 'making_screen8.dart';
 import '../models/candle_data.dart';
 import '../services/notification_service.dart';
 import 'dart:async';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
+import '../services/image_service.dart';
 
 class MakingScreen7 extends StatefulWidget {
   final CandleData candleData;
@@ -27,7 +32,9 @@ class _MakingScreen7State extends State<MakingScreen7> {
   final _ambientTempCController = TextEditingController();
   final _ambientTempFController = TextEditingController();
 
-  List<String> _photoPaths = [];
+  List<String> _photoUrls = [];
+  List<File> _tempImageFiles = [];
+  bool _isSaving = false;
   bool _isUpdating = false;
   bool _isContentVisible = false;
 
@@ -61,7 +68,7 @@ class _MakingScreen7State extends State<MakingScreen7> {
       _pouringFController.text = temp.pouringF.toStringAsFixed(1);
       _ambientTempCController.text = temp.ambientTempC.toStringAsFixed(1);
       _ambientTempFController.text = temp.ambientTempF.toStringAsFixed(1);
-      _photoPaths = List.from(temp.photoPaths);
+      _photoUrls = List.from(temp.photoUrls);
     }
   }
 
@@ -145,20 +152,98 @@ class _MakingScreen7State extends State<MakingScreen7> {
     }
   }
 
-  // This is a simulation. In a real app, you would use image_picker.
-  void _addPhoto() {
-    setState(() {
-      _photoPaths.add('photo${_photoPaths.length + 1}.jpg');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Photo added (simulated)')));
-    });
+  Future<void> _addPhoto({bool fromCamera = false}) async {
+    final image = await ImageService.pickImage(fromCamera: fromCamera);
+    if (image != null) {
+      setState(() => _tempImageFiles.add(image));
+    }
   }
 
-  void _removePhoto(String path) {
-    setState(() {
-      _photoPaths.remove(path);
-    });
+  Future<void> _showImageSourceDialog() async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Image Source'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                ListTile(
+                  leading: const Icon(Icons.camera_alt),
+                  title: const Text('Take a photo'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _addPhoto(fromCamera: true);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library),
+                  title: const Text('Choose from gallery'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _addPhoto(fromCamera: false);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showEnlargedPhoto({String? url, File? file}) async {
+    if (url == null && file == null) return;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                child: url != null
+                    ? CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) =>
+                            const Center(child: CircularProgressIndicator()),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error),
+                      )
+                    : Image.file(file!, fit: BoxFit.contain),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 30),
+                  onPressed: () async {
+                    setState(() => _isSaving = true);
+                    try {
+                      if (url != null) {
+                        await ImageService.deleteImage(url);
+                        setState(() => _photoUrls.remove(url));
+                      } else if (file != null) {
+                        setState(() => _tempImageFiles.remove(file));
+                      }
+                      Navigator.pop(context);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to delete photo: $e')),
+                      );
+                    } finally {
+                      setState(() => _isSaving = false);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -175,9 +260,7 @@ class _MakingScreen7State extends State<MakingScreen7> {
   }
 
   void _saveDataAndNavigate() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     widget.candleData.temperatureDetail = TemperatureDetail(
       maxHeatedC: double.tryParse(_maxHeatedCController.text) ?? 0.0,
@@ -190,7 +273,8 @@ class _MakingScreen7State extends State<MakingScreen7> {
       pouringF: double.tryParse(_pouringFController.text) ?? 0.0,
       ambientTempC: double.tryParse(_ambientTempCController.text) ?? 0.0,
       ambientTempF: double.tryParse(_ambientTempFController.text) ?? 0.0,
-      photoPaths: _photoPaths,
+      photoUrls: _photoUrls,
+      tempImageFiles: _tempImageFiles,
     );
 
     Navigator.push(
@@ -426,28 +510,87 @@ class _MakingScreen7State extends State<MakingScreen7> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _addPhoto,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Add Photo'),
+            child: Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.add_a_photo_outlined),
+                onPressed: () {
+                  final RenderBox button =
+                      context.findRenderObject() as RenderBox;
+                  final RenderBox overlay =
+                      Overlay.of(context).context.findRenderObject()
+                          as RenderBox;
+                  final RelativeRect position = RelativeRect.fromRect(
+                    Rect.fromPoints(
+                      button.localToGlobal(Offset.zero, ancestor: overlay),
+                      button.localToGlobal(
+                        button.size.bottomRight(Offset.zero),
+                        ancestor: overlay,
+                      ),
+                    ),
+                    Offset.zero & overlay.size,
+                  );
+
+                  showMenu<String>(
+                    context: context,
+                    position: position,
+                    items: [
+                      const PopupMenuItem<String>(
+                        value: 'camera',
+                        child: ListTile(
+                          leading: Icon(Icons.camera_alt),
+                          title: Text('Take a photo'),
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'gallery',
+                        child: ListTile(
+                          leading: Icon(Icons.photo_library),
+                          title: Text('Choose from gallery'),
+                        ),
+                      ),
+                    ],
+                  ).then((value) {
+                    if (value == 'camera') {
+                      _addPhoto(fromCamera: true);
+                    } else if (value == 'gallery') {
+                      _addPhoto(fromCamera: false);
+                    }
+                  });
+                },
+              ),
             ),
           ),
-          if (_photoPaths.isNotEmpty) ...[
+          if (_photoUrls.isNotEmpty || _tempImageFiles.isNotEmpty) ...[
             const SizedBox(height: 16.0),
             Wrap(
-              spacing: 8.0,
-              runSpacing: 8.0,
-              children: _photoPaths.map((path) {
-                return Chip(
-                  label: Text(path),
-                  onDeleted: () => _removePhoto(path),
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withOpacity(0.1),
-                  deleteIconColor: Theme.of(context).colorScheme.primary,
-                  labelStyle: Theme.of(context).textTheme.bodyMedium,
-                );
-              }).toList(),
+              children: [
+                ..._tempImageFiles.map(
+                  (file) => Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: GestureDetector(
+                      onTap: () => _showEnlargedPhoto(file: file),
+                      child: Image.file(file, width: 60, height: 60),
+                    ),
+                  ),
+                ),
+                ..._photoUrls.map(
+                  (url) => Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: GestureDetector(
+                      onTap: () => _showEnlargedPhoto(url: url),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        width: 60,
+                        height: 60,
+                        placeholder: (context, url) =>
+                            const CircularProgressIndicator(),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ],

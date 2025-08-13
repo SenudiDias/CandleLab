@@ -40,6 +40,11 @@
     <string>Allow notifications to receive updates.</string>
     <key>NSUserNotificationsUsageDescription</key>
     <string>Allow notifications to receive updates.</string>
+
+    <key>NSCameraUsageDescription</key>
+    <string>We need camera access to take photos of your candle making process</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>We need photo library access to select images of your candles</string>      
     
     <!-- Required for iOS 10+ -->
     <key>UserNotificationCenterUsageDescription</key>
@@ -88,6 +93,22 @@
                     <string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
                 </dict>
             </array>
+        </dict>
+    </dict>
+
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>firebasestorage.googleapis.com</key>
+            <dict>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+                <key>NSThirdPartyExceptionRequiresForwardSecrecy</key>
+                <false/>
+            </dict>
         </dict>
     </dict>
     

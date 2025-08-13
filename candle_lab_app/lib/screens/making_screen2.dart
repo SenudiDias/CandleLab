@@ -86,10 +86,18 @@ class _MakingScreen2State extends State<MakingScreen2> {
 
   @override
   void dispose() {
-    productControllers.values.forEach((controller) => controller.dispose());
-    supplierControllers.values.forEach((controller) => controller.dispose());
-    weightControllers.values.forEach((controller) => controller.dispose());
-    costPerKgControllers.values.forEach((controller) => controller.dispose());
+    for (var controller in productControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in supplierControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in weightControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in costPerKgControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -406,8 +414,9 @@ class _MakingScreen2State extends State<MakingScreen2> {
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Required';
                       if (double.tryParse(value) == null ||
-                          double.parse(value) <= 0)
+                          double.parse(value) <= 0) {
                         return 'Invalid';
+                      }
                       return null;
                     },
                   ),
@@ -429,8 +438,9 @@ class _MakingScreen2State extends State<MakingScreen2> {
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Required';
                       if (double.tryParse(value) == null ||
-                          double.parse(value) <= 0)
+                          double.parse(value) <= 0) {
                         return 'Invalid';
+                      }
                       return null;
                     },
                   ),

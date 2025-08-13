@@ -233,7 +233,7 @@ class _MakingScreenState extends State<MakingScreen>
     );
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: const Text('Making'),
         leading: Builder(
@@ -497,10 +497,11 @@ class _MakingScreenState extends State<MakingScreen>
                                 value: _candleData.waxTypes.contains(wax),
                                 onChanged: (checked) {
                                   setState(() {
-                                    if (checked == true)
+                                    if (checked == true) {
                                       _candleData.waxTypes.add(wax);
-                                    else
+                                    } else {
                                       _candleData.waxTypes.remove(wax);
+                                    }
                                   });
                                 },
                                 activeColor: colorScheme.primary,
@@ -572,9 +573,7 @@ class _MakingScreenState extends State<MakingScreen>
                               ),
                             ),
                           )
-                        : const SizedBox.shrink(
-                            key: const ValueKey('wicked_empty'),
-                          ),
+                        : const SizedBox.shrink(key: ValueKey('wicked_empty')),
                   ),
                   const SizedBox(height: 24.0),
                   _buildRadioGroup(

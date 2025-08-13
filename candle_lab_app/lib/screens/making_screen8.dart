@@ -183,10 +183,11 @@ class _MakingScreen8State extends State<MakingScreen8> {
         );
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error saving data: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

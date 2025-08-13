@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class NotificationData {
   String? id; // Firestore document ID
   String? userId; // Added userId field

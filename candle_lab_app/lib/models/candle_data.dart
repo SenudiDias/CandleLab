@@ -303,7 +303,7 @@ class CoolingCuringDetail {
         coolDownTime: (json['coolDownTime'] as num?)?.toDouble() ?? 0.0,
         curingDays: (json['curingDays'] as num?)?.toInt() ?? 0,
         burningDay: json['burningDay'] != null
-            ? DateTime.tryParse(json['burningDay'] as String) ?? null
+            ? DateTime.tryParse(json['burningDay'] as String)
             : null,
         reminderTime: json['reminderTime'] != null
             ? TimeOfDay(
@@ -664,11 +664,11 @@ class CandleData {
               )
             : null,
         createdAt: json['createdAt'] != null
-            ? DateTime.tryParse(json['createdAt'] as String) ?? null
+            ? DateTime.tryParse(json['createdAt'] as String)
             : null,
         totalCost: (json['totalCost'] as num?)?.toDouble(),
         flameDate: json['flameDate'] != null
-            ? DateTime.tryParse(json['flameDate'] as String) ?? null
+            ? DateTime.tryParse(json['flameDate'] as String)
             : null,
         flameTime: json['flameTime'] != null
             ? TimeOfDay(

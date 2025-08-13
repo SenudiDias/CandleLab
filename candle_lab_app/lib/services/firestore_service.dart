@@ -211,7 +211,7 @@ class FirestoreService {
             candle.flameRecord != null) {
           final meltMeasure = candle.flameRecord!.meltMeasures.firstWhere(
             (m) => m.time == meltTime,
-            orElse: () => MeltMeasure(time: meltTime!),
+            orElse: () => MeltMeasure(time: meltTime),
           );
           matches = matches && (meltMeasure.fullMelt * 100) >= meltPercentage;
         }
@@ -222,7 +222,7 @@ class FirestoreService {
             candle.flameRecord != null) {
           final meltMeasure = candle.flameRecord!.meltMeasures.firstWhere(
             (m) => m.time == meltTime,
-            orElse: () => MeltMeasure(time: meltTime!),
+            orElse: () => MeltMeasure(time: meltTime),
           );
           if (meltDepth == 0.0) {
             matches = matches && meltMeasure.meltDepth == 0.0;
@@ -269,7 +269,7 @@ class FirestoreService {
     });
   }
 
-  // Update the markNotificationAsUnread method in firestore_service.dart
+  // In firestore_service.dart, ensure the markNotificationAsUnread method looks like this:
   Future<void> markNotificationAsUnread(String notificationId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -279,7 +279,6 @@ class FirestoreService {
       final doc = await _notificationsCollection.doc(notificationId).get();
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
-        // Only mark as unread if it was never manually read
         if (data['userId'] == user.uid && data['manuallyReadAt'] == null) {
           await _notificationsCollection.doc(notificationId).update({
             'isRead': false,

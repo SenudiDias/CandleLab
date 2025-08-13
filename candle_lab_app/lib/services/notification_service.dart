@@ -28,17 +28,30 @@ class NotificationService {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
-    final notification = NotificationData(
-      id: id.toString(),
-      userId: user.uid,
-      candleId: id.toString(),
-      candleName: candleName,
-      candleType: candleType,
-      burningDay: scheduledDate,
-      isRead: false,
-      createdAt: DateTime.now(),
-    );
-    await _firestoreService.saveNotification(notification);
+    try {
+      final notification = NotificationData(
+        id: id.toString(),
+        userId: user.uid,
+        candleId: id.toString(),
+        candleName: candleName,
+        candleType: candleType,
+        burningDay: scheduledDate,
+        isRead: true, // Set as read initially
+        createdAt: DateTime.now(),
+      );
+      await _firestoreService.saveNotification(notification);
+
+      // Schedule the local notification
+      await LocalNotificationService.scheduleNotification(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+      );
+    } catch (e) {
+      print('Error in notification scheduling: $e');
+      // Notification will still be saved in Firestore even if local scheduling fails
+    }
   }
 
   static Future<void> markAsRead(String notificationId) async {
@@ -69,20 +82,19 @@ class NotificationService {
       final notifications = await _firestoreService.getAllNotificationsOnce();
 
       for (var notification in notifications) {
-        if (notification.burningDay.isBefore(now) &&
-            notification.manuallyReadAt == null) {
-          print('Triggering notification for ${notification.candleName}');
-          _notificationTrigger.add(null);
-          await LocalNotificationService.showNotification(
-            title: 'Candle Ready to Burn',
-            body: '${notification.candleName} is ready for burning!',
-          );
-          // Do not mark as read here; wait for manual acknowledgment
+        if (notification.burningDay.isBefore(now)) {
+          if (notification.manuallyReadAt == null) {
+            // Only mark as unread if it's time to notify
+            await _firestoreService.markNotificationAsUnread(notification.id!);
+            print('Triggering notification for ${notification.candleName}');
+            _notificationTrigger.add(null);
+          }
         }
       }
     });
   }
 
+  // In notification_service.dart, update the checkAndTriggerInAppNotificationWithContext method:
   static void checkAndTriggerInAppNotificationWithContext(
     BuildContext context,
   ) {
@@ -104,6 +116,7 @@ class NotificationService {
 
         for (var notification in notifications) {
           if (notification.burningDay.isBefore(now) &&
+              !notification.isRead &&
               notification.manuallyReadAt == null) {
             print('Showing in-app dialog for ${notification.candleName}');
             LocalNotificationService.showInAppNotification(

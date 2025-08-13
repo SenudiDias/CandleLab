@@ -220,7 +220,7 @@ class FirestoreService {
             candle.flameRecord != null) {
           final meltMeasure = candle.flameRecord!.meltMeasures.firstWhere(
             (m) => m.time == meltTime,
-            orElse: () => MeltMeasure(time: meltTime!),
+            orElse: () => MeltMeasure(time: meltTime),
           );
           matches = matches && (meltMeasure.fullMelt * 100) >= meltPercentage;
         }
@@ -231,7 +231,7 @@ class FirestoreService {
             candle.flameRecord != null) {
           final meltMeasure = candle.flameRecord!.meltMeasures.firstWhere(
             (m) => m.time == meltTime,
-            orElse: () => MeltMeasure(time: meltTime!),
+            orElse: () => MeltMeasure(time: meltTime),
           );
           if (meltDepth == 0.0) {
             matches = matches && meltMeasure.meltDepth == 0.0;

@@ -59,7 +59,7 @@ class _FlameDayScreenState extends State<FlameDayScreen>
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'Flame Day',
@@ -845,7 +845,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
         _flameSizeTimes.add(time);
       }
     });
-    flameRecord.meltMeasures.forEach((measure) {
+    for (var measure in flameRecord.meltMeasures) {
       if (!_meltMeasureTimes.contains(measure.time)) {
         _meltMeasureTimes.add(measure.time);
       }
@@ -864,7 +864,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
       _depthControllers[measure.time] = TextEditingController(
         text: formatDouble(measure.meltDepth),
       );
-    });
+    }
     _flameSizeTimes.sort();
     _meltMeasureTimes.sort();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1081,7 +1081,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
     final isScented = widget.candle.isScented == true;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: Text(
           'Record Flame Data - ${widget.candle.sampleName ?? 'Unnamed'}',

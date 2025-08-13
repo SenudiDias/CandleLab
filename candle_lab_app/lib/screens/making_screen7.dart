@@ -33,7 +33,7 @@ class _MakingScreen7State extends State<MakingScreen7> {
   final _ambientTempFController = TextEditingController();
 
   List<String> _photoUrls = [];
-  List<File> _tempImageFiles = [];
+  final List<File> _tempImageFiles = [];
   bool _isSaving = false;
   bool _isUpdating = false;
   bool _isContentVisible = false;

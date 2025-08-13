@@ -93,39 +93,46 @@ class LocalNotificationService {
     required String body,
     required DateTime scheduledDate,
   }) async {
-    final tz.TZDateTime scheduledTzDate = tz.TZDateTime.from(
-      scheduledDate,
-      tz.local,
-    );
+    try {
+      final tz.TZDateTime scheduledTzDate = tz.TZDateTime.from(
+        scheduledDate,
+        tz.local,
+      );
 
-    const AndroidNotificationDetails androidNotificationDetails =
-        AndroidNotificationDetails(
-          'candle_reminders',
-          'Candle Reminders',
-          importance: Importance.max,
-          priority: Priority.high,
-        );
+      const AndroidNotificationDetails androidNotificationDetails =
+          AndroidNotificationDetails(
+            'candle_reminders',
+            'Candle Reminders',
+            importance: Importance.max,
+            priority: Priority.high,
+          );
 
-    const DarwinNotificationDetails iOSNotificationDetails =
-        DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        );
+      const DarwinNotificationDetails iOSNotificationDetails =
+          DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          );
 
-    final NotificationDetails notificationDetails = NotificationDetails(
-      android: androidNotificationDetails,
-      iOS: iOSNotificationDetails,
-    );
+      final NotificationDetails notificationDetails = NotificationDetails(
+        android: androidNotificationDetails,
+        iOS: iOSNotificationDetails,
+      );
 
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledTzDate,
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledTzDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode
+            .inexactAllowWhileIdle, // Changed from exact to inexact
+      );
+    } catch (e) {
+      print('Error scheduling notification: $e');
+      // Fallback to immediate notification if scheduling fails
+      await showNotification(title: title, body: body);
+    }
   }
 
   static void showInAppNotification(

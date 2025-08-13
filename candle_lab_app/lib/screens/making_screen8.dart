@@ -86,11 +86,11 @@ class _MakingScreen8State extends State<MakingScreen8> {
   bool _isSaving = false;
   TimeOfDay? _selectedReminderTime;
   List<String> _photoUrls = [];
-  List<File> _tempImageFiles = [];
+  final List<File> _tempImageFiles = [];
   DateTime? _calculatedBurningDay;
   bool _isContentVisible = false;
   StreamSubscription? _candleSubscription;
-  int _totalSteps = 1;
+  final int _totalSteps = 1;
 
   @override
   void initState() {
@@ -224,7 +224,7 @@ class _MakingScreen8State extends State<MakingScreen8> {
       // Calculate total steps
       int totalSteps = 2; // Initial and final saves
       totalSteps +=
-          widget.candleData.temperatureDetail?.tempImageFiles?.length ?? 0;
+          widget.candleData.temperatureDetail?.tempImageFiles.length ?? 0;
       totalSteps += _tempImageFiles.length;
 
       // Show progress dialog
@@ -282,17 +282,17 @@ class _MakingScreen8State extends State<MakingScreen8> {
       }
 
       // Upload temperature images
-      if (widget.candleData.temperatureDetail?.tempImageFiles?.isNotEmpty ??
+      if (widget.candleData.temperatureDetail?.tempImageFiles.isNotEmpty ??
           false) {
         final urls = await ImageService.uploadImages(
-          widget.candleData.temperatureDetail!.tempImageFiles!,
+          widget.candleData.temperatureDetail!.tempImageFiles,
           'candles/${widget.candleData.userId}/${widget.candleData.id}/images/temp',
           onProgress: (index, total) {
             updateProgress(++completedSteps);
           },
         );
         widget.candleData.temperatureDetail!.photoUrls.addAll(urls);
-        widget.candleData.temperatureDetail!.tempImageFiles!.clear();
+        widget.candleData.temperatureDetail!.tempImageFiles.clear();
       }
 
       // Upload cooling images

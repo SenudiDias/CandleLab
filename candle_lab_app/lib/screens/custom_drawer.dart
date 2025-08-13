@@ -38,7 +38,7 @@ class _CustomDrawerState extends State<CustomDrawer>
 
     return Drawer(
       child: Container(
-        color: colorScheme.background,
+        color: colorScheme.surface,
         child: Column(
           children: [
             Container(

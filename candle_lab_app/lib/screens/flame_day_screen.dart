@@ -1637,6 +1637,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                           Center(
                             child: Wrap(
                               spacing: 8.0,
+                              runSpacing: 8.0,
                               children:
                                   [
                                     'Strong',
@@ -1706,6 +1707,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                                   Center(
                                     child: Wrap(
                                       spacing: 8.0,
+                                      runSpacing: 8.0,
                                       children:
                                           [
                                             'Strong',

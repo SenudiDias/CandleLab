@@ -142,12 +142,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
         textTheme: const TextTheme(
           titleLarge: TextStyle(
-            fontSize: 18.0,
+            fontSize: 16.0,
             fontWeight: FontWeight.bold,
             color: Color(0xFF5D4037),
           ),
           titleMedium: TextStyle(
-            fontSize: 18.0,
+            fontSize: 14.0,
             fontWeight: FontWeight.bold,
             color: Color(0xFF5D4037),
           ),

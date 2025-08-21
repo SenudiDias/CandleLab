@@ -7,7 +7,6 @@ import 'making_screen8.dart';
 import '../models/candle_data.dart';
 import '../services/notification_service.dart';
 import 'dart:async';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../services/image_service.dart';
 

@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'custom_drawer.dart';
 import 'making_screen9.dart';
 import '../models/candle_data.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
-import 'login_screen.dart';
 import 'dart:async';
 import 'dart:io';
 import '../services/image_service.dart';

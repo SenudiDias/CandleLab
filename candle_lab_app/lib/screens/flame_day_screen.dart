@@ -9,6 +9,8 @@ import 'custom_drawer.dart';
 import 'making_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../services/image_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class FlameDayScreen extends StatefulWidget {
   const FlameDayScreen({super.key});
@@ -823,6 +825,65 @@ class FlameRecordScreen extends StatefulWidget {
   State<FlameRecordScreen> createState() => _FlameRecordScreenState();
 }
 
+class _FlameSaveProgressDialog extends StatefulWidget {
+  final int totalSteps;
+  final Future<bool> Function(void Function(int)) onSave;
+
+  const _FlameSaveProgressDialog({
+    required this.totalSteps,
+    required this.onSave,
+  });
+
+  @override
+  State<_FlameSaveProgressDialog> createState() =>
+      _FlameSaveProgressDialogState();
+}
+
+class _FlameSaveProgressDialogState extends State<_FlameSaveProgressDialog> {
+  int _completedSteps = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startSaveOperation();
+  }
+
+  Future<void> _startSaveOperation() async {
+    final success = await widget.onSave(_updateProgress);
+    if (mounted) {
+      Navigator.of(context).pop(success);
+    }
+  }
+
+  void _updateProgress(int steps) {
+    if (mounted) {
+      setState(() {
+        _completedSteps = steps;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Saving Flame Data...'),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: (_completedSteps / widget.totalSteps).clamp(0.0, 1.0),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${((_completedSteps / widget.totalSteps) * 100).toStringAsFixed(0)}%',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _FlameRecordScreenState extends State<FlameRecordScreen>
     with SingleTickerProviderStateMixin {
   final FirestoreService _firestoreService = FirestoreService();
@@ -834,6 +895,8 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
   final List<double> _meltMeasureTimes = [0.5, 1.0, 1.5];
   final Map<double, TextEditingController> _diameterControllers = {};
   final Map<double, TextEditingController> _depthControllers = {};
+  bool _isSaving = false;
+  final List<File> _tempImageFiles = [];
 
   @override
   void initState() {
@@ -884,6 +947,81 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
     super.dispose();
   }
 
+  Future<void> _showEnlargedPhoto({
+    String? url,
+    File? file,
+    double time = 0,
+  }) async {
+    if (url == null && file == null) return;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          child: Stack(
+            children: [
+              InteractiveViewer(
+                child: url != null && url.startsWith('http')
+                    ? CachedNetworkImage(
+                        imageUrl: url,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) =>
+                            const Center(child: CircularProgressIndicator()),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error),
+                      )
+                    : Image.file(file!, fit: BoxFit.contain),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 30),
+                  onPressed: () async {
+                    setState(() => _isSaving = true);
+                    try {
+                      if (time == 0) {
+                        // General photos
+                        if (url != null) {
+                          await ImageService.deleteImage(url);
+                          flameRecord.photoUrls.remove(url);
+                        } else if (file != null) {
+                          _tempImageFiles.remove(file);
+                        }
+                      } else {
+                        // Melt measure photos
+                        final index = flameRecord.meltMeasures.indexWhere(
+                          (m) => m.time == time,
+                        );
+                        if (index != -1) {
+                          final measure = flameRecord.meltMeasures[index];
+                          if (url != null) {
+                            await ImageService.deleteImage(url);
+                            measure.photoUrls.remove(url);
+                          } else if (file != null) {
+                            measure.tempPhotos.remove(file);
+                          }
+                        }
+                      }
+                      Navigator.pop(context);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to delete photo: $e')),
+                      );
+                    } finally {
+                      setState(() => _isSaving = false);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _saveFlameRecord() async {
     try {
       widget.candle.flameRecord = flameRecord;
@@ -897,13 +1035,13 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
     }
   }
 
-  Future<void> _addPhoto() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+  Future<void> _addPhoto({bool fromCamera = false}) async {
+    final image = await ImageService.pickImage(fromCamera: fromCamera);
     if (image != null && mounted) {
       setState(() {
-        flameRecord.photoPaths = [...flameRecord.photoPaths, image.path];
+        _tempImageFiles.add(image); // Store File object, not path
       });
-      await _saveFlameRecord();
+      _saveFlameRecord();
     }
   }
 
@@ -933,7 +1071,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
           : 1.5;
       final newTime = lastTime + 0.5;
       _meltMeasureTimes.add(newTime);
-      flameRecord.meltMeasures.add(MeltMeasure(time: newTime, photoPaths: []));
+      flameRecord.meltMeasures.add(MeltMeasure(time: newTime, photoUrls: []));
       _diameterControllers[newTime] = TextEditingController();
       _depthControllers[newTime] = TextEditingController();
     });
@@ -954,45 +1092,126 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
     }
   }
 
-  Future<void> _addMeltMeasurePhoto(double time) async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null && mounted) {
+  Future<void> _addMeltMeasurePhoto(
+    double time, {
+    bool fromCamera = false,
+  }) async {
+    final image = await ImageService.pickImage(fromCamera: fromCamera);
+    if (image != null) {
       setState(() {
         final index = flameRecord.meltMeasures.indexWhere(
           (m) => m.time == time,
         );
-        if (index != -1) {
-          flameRecord.meltMeasures[index].photoPaths = [
-            ...flameRecord.meltMeasures[index].photoPaths,
-            image.path,
-          ];
+        MeltMeasure measure;
+        if (index == -1) {
+          measure = MeltMeasure(time: time);
+          flameRecord.meltMeasures.add(measure);
         } else {
-          flameRecord.meltMeasures.add(
-            MeltMeasure(time: time, photoPaths: [image.path]),
-          );
+          measure = flameRecord.meltMeasures[index];
         }
+        measure.tempPhotos.add(image);
       });
-      await _saveFlameRecord();
+      _saveFlameRecord(); // Optional: Save partial data
+    }
+  }
+
+  Future<bool> _performSaveOperation(void Function(int) updateProgress) async {
+    int completedSteps = 0;
+    try {
+      // Count total steps
+      int totalImageUploads = 0;
+
+      // General photos
+      if (_tempImageFiles.isNotEmpty) {
+        totalImageUploads++;
+      }
+
+      // Melt measure photos
+      for (var measure in widget.candle.flameRecord!.meltMeasures) {
+        if (measure.tempPhotos.isNotEmpty) {
+          totalImageUploads++;
+        }
+      }
+
+      // Upload general photos
+      if (_tempImageFiles.isNotEmpty) {
+        final urls = await ImageService.uploadImages(
+          _tempImageFiles, // This should be List<File>
+          'candles/${widget.candle.userId}/${widget.candle.id}/images/flame/general',
+          onProgress: (index, total) {
+            updateProgress(++completedSteps);
+          },
+        );
+        flameRecord.photoUrls.addAll(urls);
+        _tempImageFiles.clear();
+        updateProgress(++completedSteps);
+      }
+
+      // Upload melt measure photos
+      for (var measure in widget.candle.flameRecord!.meltMeasures) {
+        if (measure.tempPhotos.isNotEmpty) {
+          final urls = await ImageService.uploadImages(
+            measure.tempPhotos,
+            'candles/${widget.candle.userId}/${widget.candle.id}/images/flame/${measure.time}',
+            onProgress: (index, total) {
+              updateProgress(++completedSteps);
+            },
+          );
+          measure.photoUrls.addAll(urls);
+          measure.tempPhotos.clear();
+          updateProgress(++completedSteps);
+        }
+      }
+
+      // Final save
+      widget.candle.isFlamed = true;
+      await FirestoreService().saveCandleData(widget.candle);
+      updateProgress(++completedSteps);
+
+      return true;
+    } catch (e) {
+      print('Save process failed: $e');
+      return false;
     }
   }
 
   Future<void> _markAsFlamed() async {
-    try {
-      setState(() {
-        widget.candle.isFlamed = true;
-      });
-      await _firestoreService.saveCandleData(widget.candle);
-      if (mounted) {
+    setState(() => _isSaving = true);
+    // Calculate total steps
+    int totalSteps = 1; // Final save
+    for (var measure in widget.candle.flameRecord!.meltMeasures) {
+      if (measure.tempPhotos.isNotEmpty) {
+        totalSteps++; // Each melt measure with photos
+      }
+    }
+
+    // Show progress dialog
+    final saveSuccess = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return _FlameSaveProgressDialog(
+          totalSteps: totalSteps,
+          onSave: (updateProgress) => _performSaveOperation(updateProgress),
+        );
+      },
+    );
+
+    if (mounted) {
+      setState(() => _isSaving = false);
+
+      if (saveSuccess == true) {
+        // Navigate back to FlameDayScreen
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sample marked as flamed')),
+          const SnackBar(
+            content: Text('Candle successfully marked as flamed!'),
+          ),
         );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error marking as flamed: $e')));
+      } else if (saveSuccess == false) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save flame data')),
+        );
       }
     }
   }
@@ -1550,51 +1769,187 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                         ),
                         const SizedBox(height: 12.0),
                         Center(
-                          child: ElevatedButton.icon(
-                            onPressed: _addPhoto,
-                            icon: Icon(
-                              Icons.add_a_photo,
-                              color: colorScheme.onPrimary,
-                              size: 20.0,
-                            ),
-                            label: Text(
-                              'Add Photo',
-                              style: textTheme.bodyLarge?.copyWith(
-                                color: colorScheme.onPrimary,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colorScheme.primary,
-                              foregroundColor: colorScheme.onPrimary,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30.0),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20.0,
-                                vertical: 10.0,
-                              ),
+                          child: Builder(
+                            builder: (context) => IconButton(
+                              icon: const Icon(Icons.add_a_photo_outlined),
+                              onPressed: () {
+                                final RenderBox button =
+                                    context.findRenderObject() as RenderBox;
+                                final RenderBox overlay =
+                                    Overlay.of(
+                                          context,
+                                        ).context.findRenderObject()
+                                        as RenderBox;
+                                final RelativeRect position =
+                                    RelativeRect.fromRect(
+                                      Rect.fromPoints(
+                                        button.localToGlobal(
+                                          Offset.zero,
+                                          ancestor: overlay,
+                                        ),
+                                        button.localToGlobal(
+                                          button.size.bottomRight(Offset.zero),
+                                          ancestor: overlay,
+                                        ),
+                                      ),
+                                      Offset.zero & overlay.size,
+                                    );
+
+                                showMenu<String>(
+                                  context: context,
+                                  position: position,
+                                  items: [
+                                    const PopupMenuItem<String>(
+                                      value: 'camera',
+                                      child: ListTile(
+                                        leading: Icon(Icons.camera_alt),
+                                        title: Text('Take a photo'),
+                                      ),
+                                    ),
+                                    const PopupMenuItem<String>(
+                                      value: 'gallery',
+                                      child: ListTile(
+                                        leading: Icon(Icons.photo_library),
+                                        title: Text('Choose from gallery'),
+                                      ),
+                                    ),
+                                  ],
+                                ).then((value) {
+                                  if (value == 'camera') {
+                                    _addPhoto(fromCamera: true);
+                                  } else if (value == 'gallery') {
+                                    _addPhoto(fromCamera: false);
+                                  }
+                                });
+                              },
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12.0),
-                        Wrap(
-                          spacing: 8.0,
-                          runSpacing: 8.0,
-                          children: flameRecord.photoPaths.map((path) {
-                            return Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                image: DecorationImage(
-                                  image: FileImage(File(path)),
-                                  fit: BoxFit.cover,
+                        if (_tempImageFiles.isNotEmpty ||
+                            flameRecord.photoUrls.isNotEmpty) ...[
+                          const SizedBox(height: 16.0),
+                          // In the photos section, replace the current ListView with this:
+                          SizedBox(
+                            height: 80,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                // Display temporary files - use Image.file
+                                ..._tempImageFiles.map(
+                                  (file) => GestureDetector(
+                                    onTap: () =>
+                                        _showEnlargedPhoto(file: file, time: 0),
+                                    child: Container(
+                                      margin: const EdgeInsets.all(4.0),
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
+                                        border: Border.all(
+                                          color: colorScheme.primary
+                                              .withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          8.0,
+                                        ),
+                                        child: Image.file(
+                                          file,
+                                          width: 60,
+                                          height: 60,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                                print(
+                                                  'Error loading file: $error',
+                                                );
+                                                return Container(
+                                                  color: Colors.grey[200],
+                                                  child: const Icon(
+                                                    Icons.broken_image,
+                                                    size: 20,
+                                                    color: Colors.grey,
+                                                  ),
+                                                );
+                                              },
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                border: Border.all(color: colorScheme.primary),
-                                borderRadius: BorderRadius.circular(8.0),
-                              ),
-                            );
-                          }).toList(),
-                        ),
+
+                                ...flameRecord.photoUrls
+                                    .where((url) => url.startsWith('http'))
+                                    .map(
+                                      (url) => GestureDetector(
+                                        onTap: () => _showEnlargedPhoto(
+                                          url: url,
+                                          time: 0,
+                                        ),
+                                        child: Container(
+                                          margin: const EdgeInsets.all(4.0),
+                                          width: 60,
+                                          height: 60,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              8.0,
+                                            ),
+                                            border: Border.all(
+                                              color: colorScheme.primary
+                                                  .withOpacity(0.3),
+                                            ),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              8.0,
+                                            ),
+                                            child: CachedNetworkImage(
+                                              imageUrl: url,
+                                              width: 60,
+                                              height: 60,
+                                              fit: BoxFit.cover,
+                                              progressIndicatorBuilder:
+                                                  (
+                                                    context,
+                                                    url,
+                                                    downloadProgress,
+                                                  ) => Container(
+                                                    color: Colors.grey[200],
+                                                    child: Center(
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                            value:
+                                                                downloadProgress
+                                                                    .progress,
+                                                            strokeWidth: 2,
+                                                          ),
+                                                    ),
+                                                  ),
+                                              errorWidget: (context, url, error) {
+                                                print(
+                                                  'Error loading URL: $url, Error: $error',
+                                                );
+                                                return Container(
+                                                  color: Colors.grey[200],
+                                                  child: const Icon(
+                                                    Icons.broken_image,
+                                                    size: 20,
+                                                    color: Colors.grey,
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -1802,7 +2157,7 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                             final measure = flameRecord.meltMeasures.firstWhere(
                               (m) => m.time == time,
                               orElse: () =>
-                                  MeltMeasure(time: time, photoPaths: []),
+                                  MeltMeasure(time: time, photoUrls: []),
                             );
                             _diameterControllers.putIfAbsent(
                               time,
@@ -1826,249 +2181,243 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                                     : measure.meltDepth.toString(),
                               ),
                             );
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 8.0,
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 16.0),
+                              padding: const EdgeInsets.all(12.0),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface,
+                                borderRadius: BorderRadius.circular(8.0),
+                                border: Border.all(color: Colors.grey.shade300),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Time header
+                                  Text(
+                                    '$time hours',
+                                    style: textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: colorScheme.secondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12.0),
+
+                                  // Text fields row
                                   Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
-                                        flex: 2,
-                                        child: Text(
-                                          '$time hours',
-                                          style: textTheme.bodyLarge?.copyWith(
-                                            color: colorScheme.onSurface,
+                                        flex: 3,
+                                        child: TextField(
+                                          controller:
+                                              _diameterControllers[time],
+                                          keyboardType:
+                                              TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          decoration: InputDecoration(
+                                            labelText: 'Diameter (cm)',
+                                            border: const OutlineInputBorder(),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 12.0,
+                                                  vertical: 8.0,
+                                                ),
                                           ),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              measure.meltDiameter =
+                                                  double.tryParse(value) ?? 0.0;
+                                            });
+                                            _saveFlameRecord();
+                                          },
                                         ),
                                       ),
+                                      const SizedBox(width: 12.0),
                                       Expanded(
                                         flex: 3,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
+                                        child: TextField(
+                                          controller: _depthControllers[time],
+                                          keyboardType:
+                                              TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          decoration: InputDecoration(
+                                            labelText: 'Depth (cm)',
+                                            border: const OutlineInputBorder(),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 12.0,
+                                                  vertical: 8.0,
+                                                ),
+                                          ),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              measure.meltDepth =
+                                                  double.tryParse(value) ?? 0.0;
+                                            });
+                                            _saveFlameRecord();
+                                          },
+                                        ),
+                                      ),
+                                      if (_meltMeasureTimes.length > 3 &&
+                                          time > 1)
+                                        IconButton(
+                                          icon: Icon(
+                                            Icons.delete,
+                                            color: colorScheme.error,
+                                            size: 20.0,
+                                          ),
+                                          tooltip: 'Delete Time',
+                                          onPressed: () =>
+                                              _deleteMeltMeasureTime(time),
+                                        ),
+                                    ],
+                                  ),
+
+                                  // Camera button and photos section - BELOW the text fields
+                                  const SizedBox(height: 12.0),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // Camera button
+                                      Builder(
+                                        builder: (context) => IconButton(
+                                          icon: Icon(
+                                            Icons.add_a_photo,
+                                            color: colorScheme.primary,
+                                            size: 24.0,
+                                          ),
+                                          tooltip: 'Add Photo',
+                                          onPressed: () {
+                                            final RenderBox button =
+                                                context.findRenderObject()
+                                                    as RenderBox;
+                                            final RenderBox overlay =
+                                                Overlay.of(
+                                                      context,
+                                                    ).context.findRenderObject()
+                                                    as RenderBox;
+                                            final RelativeRect position =
+                                                RelativeRect.fromRect(
+                                                  Rect.fromPoints(
+                                                    button.localToGlobal(
+                                                      Offset.zero,
+                                                      ancestor: overlay,
+                                                    ),
+                                                    button.localToGlobal(
+                                                      button.size.bottomRight(
+                                                        Offset.zero,
+                                                      ),
+                                                      ancestor: overlay,
+                                                    ),
+                                                  ),
+                                                  Offset.zero & overlay.size,
+                                                );
+
+                                            showMenu<String>(
+                                              context: context,
+                                              position: position,
+                                              items: [
+                                                const PopupMenuItem<String>(
+                                                  value: 'camera',
+                                                  child: ListTile(
+                                                    leading: Icon(
+                                                      Icons.camera_alt,
+                                                    ),
+                                                    title: Text('Take a photo'),
+                                                  ),
+                                                ),
+                                                const PopupMenuItem<String>(
+                                                  value: 'gallery',
+                                                  child: ListTile(
+                                                    leading: Icon(
+                                                      Icons.photo_library,
+                                                    ),
+                                                    title: Text(
+                                                      'Choose from gallery',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ).then((value) {
+                                              if (value == 'camera') {
+                                                _addMeltMeasurePhoto(
+                                                  time,
+                                                  fromCamera: true,
+                                                );
+                                              } else if (value == 'gallery') {
+                                                _addMeltMeasurePhoto(
+                                                  time,
+                                                  fromCamera: false,
+                                                );
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      ),
+
+                                      // Photo thumbnails
+                                      Expanded(
+                                        child: Wrap(
+                                          alignment: WrapAlignment.end,
+                                          spacing: 8.0,
                                           children: [
-                                            TextField(
-                                              controller:
-                                                  _diameterControllers[time],
-                                              decoration: InputDecoration(
-                                                labelText: 'Melt Diameter (mm)',
-                                                border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        8.0,
-                                                      ),
+                                            ...measure.tempPhotos.map(
+                                              (file) => GestureDetector(
+                                                onTap: () => _showEnlargedPhoto(
+                                                  file: file,
+                                                  time: time,
                                                 ),
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12.0,
-                                                      vertical: 8.0,
-                                                    ),
+                                                child: Image.file(
+                                                  file,
+                                                  width: 40,
+                                                  height: 40,
+                                                  fit: BoxFit.cover,
+                                                ),
                                               ),
-                                              style: textTheme.bodyMedium,
-                                              keyboardType:
-                                                  const TextInputType.numberWithOptions(
-                                                    decimal: true,
-                                                  ),
-                                              onChanged: (value) {
-                                                final newDiameter =
-                                                    double.tryParse(value) ??
-                                                    0.0;
-                                                setState(() {
-                                                  final index = flameRecord
-                                                      .meltMeasures
-                                                      .indexWhere(
-                                                        (m) => m.time == time,
-                                                      );
-                                                  if (index == -1) {
-                                                    flameRecord.meltMeasures.add(
-                                                      MeltMeasure(
-                                                        time: time,
-                                                        meltDiameter:
-                                                            newDiameter,
-                                                        meltDepth:
-                                                            measure.meltDepth,
-                                                        fullMelt:
-                                                            referenceDiameter >
-                                                                0
-                                                            ? newDiameter /
-                                                                  referenceDiameter
-                                                            : 0.0,
-                                                        photoPaths:
-                                                            measure.photoPaths,
-                                                      ),
-                                                    );
-                                                  } else {
-                                                    flameRecord
-                                                            .meltMeasures[index]
-                                                            .meltDiameter =
-                                                        newDiameter;
-                                                    flameRecord
-                                                            .meltMeasures[index]
-                                                            .fullMelt =
-                                                        referenceDiameter > 0
-                                                        ? newDiameter /
-                                                              referenceDiameter
-                                                        : 0.0;
-                                                  }
-                                                });
-                                                _saveFlameRecord();
-                                              },
                                             ),
-                                            const SizedBox(height: 8.0),
-                                            TextField(
-                                              controller:
-                                                  _depthControllers[time],
-                                              decoration: InputDecoration(
-                                                labelText: 'Melt Depth (mm)',
-                                                border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        8.0,
-                                                      ),
+                                            ...measure.photoUrls.map(
+                                              (url) => GestureDetector(
+                                                onTap: () => _showEnlargedPhoto(
+                                                  url: url,
+                                                  time: time,
                                                 ),
-                                                contentPadding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12.0,
-                                                      vertical: 8.0,
-                                                    ),
-                                              ),
-                                              style: textTheme.bodyMedium,
-                                              keyboardType:
-                                                  const TextInputType.numberWithOptions(
-                                                    decimal: true,
-                                                  ),
-                                              onChanged: (value) {
-                                                final newDepth =
-                                                    double.tryParse(value) ??
-                                                    0.0;
-                                                setState(() {
-                                                  final index = flameRecord
-                                                      .meltMeasures
-                                                      .indexWhere(
-                                                        (m) => m.time == time,
-                                                      );
-                                                  if (index == -1) {
-                                                    flameRecord.meltMeasures.add(
-                                                      MeltMeasure(
-                                                        time: time,
-                                                        meltDiameter: measure
-                                                            .meltDiameter,
-                                                        meltDepth: newDepth,
-                                                        fullMelt:
-                                                            referenceDiameter >
-                                                                0
-                                                            ? measure.meltDiameter /
-                                                                  referenceDiameter
-                                                            : 0.0,
-                                                        photoPaths:
-                                                            measure.photoPaths,
+                                                child: CachedNetworkImage(
+                                                  imageUrl: url,
+                                                  width: 40,
+                                                  height: 40,
+                                                  fit: BoxFit.cover,
+                                                  progressIndicatorBuilder:
+                                                      (
+                                                        context,
+                                                        url,
+                                                        downloadProgress,
+                                                      ) => Container(
+                                                        color: Colors.grey[200],
+                                                        child: Center(
+                                                          child: CircularProgressIndicator(
+                                                            value:
+                                                                downloadProgress
+                                                                    .progress,
+                                                            strokeWidth: 2,
+                                                          ),
+                                                        ),
                                                       ),
-                                                    );
-                                                  } else {
-                                                    flameRecord
-                                                            .meltMeasures[index]
-                                                            .meltDepth =
-                                                        newDepth;
-                                                  }
-                                                });
-                                                _saveFlameRecord();
-                                              },
+                                                  errorWidget:
+                                                      (context, url, error) =>
+                                                          const Icon(
+                                                            Icons.error,
+                                                          ),
+                                                ),
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 8.0,
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Full Melt',
-                                                style: textTheme.bodyLarge
-                                                    ?.copyWith(
-                                                      color:
-                                                          colorScheme.onSurface,
-                                                    ),
-                                              ),
-                                              const SizedBox(height: 8.0),
-                                              Text(
-                                                measure.fullMelt > 0
-                                                    ? measure.fullMelt
-                                                          .toStringAsFixed(2)
-                                                    : 'N/A',
-                                                style: textTheme.bodyMedium
-                                                    ?.copyWith(
-                                                      color:
-                                                          colorScheme.onSurface,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      Column(
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.add_a_photo,
-                                              color: colorScheme.primary,
-                                              size: 20.0,
-                                            ),
-                                            tooltip: 'Add Photo',
-                                            onPressed: () =>
-                                                _addMeltMeasurePhoto(time),
-                                          ),
-                                          if (_meltMeasureTimes.length > 3 &&
-                                              time > 1.5)
-                                            IconButton(
-                                              icon: Icon(
-                                                Icons.delete,
-                                                color: colorScheme.error,
-                                                size: 20.0,
-                                              ),
-                                              tooltip: 'Delete Time',
-                                              onPressed: () =>
-                                                  _deleteMeltMeasureTime(time),
-                                            ),
-                                        ],
-                                      ),
                                     ],
                                   ),
-                                  if (measure.photoPaths.isNotEmpty) ...[
-                                    const SizedBox(height: 8.0),
-                                    Wrap(
-                                      spacing: 8.0,
-                                      runSpacing: 8.0,
-                                      children: measure.photoPaths.map((path) {
-                                        return Container(
-                                          width: 60,
-                                          height: 60,
-                                          decoration: BoxDecoration(
-                                            image: DecorationImage(
-                                              image: FileImage(File(path)),
-                                              fit: BoxFit.cover,
-                                            ),
-                                            border: Border.all(
-                                              color: colorScheme.primary,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              8.0,
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
                                 ],
                               ),
                             );
@@ -2129,19 +2478,28 @@ class _FlameRecordScreenState extends State<FlameRecordScreen>
                     const SizedBox(width: 16.0),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _markAsFlamed,
+                        onPressed: _isSaving ? null : _markAsFlamed,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colorScheme.primary,
                           foregroundColor: colorScheme.onPrimary,
                           shape: const StadiumBorder(),
                           padding: const EdgeInsets.symmetric(vertical: 14.0),
                         ),
-                        child: Text(
-                          'Done',
-                          style: textTheme.titleLarge?.copyWith(
-                            color: colorScheme.onPrimary,
-                          ),
-                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 3,
+                                ),
+                              )
+                            : Text(
+                                'Done',
+                                style: textTheme.titleLarge?.copyWith(
+                                  color: colorScheme.onPrimary,
+                                ),
+                              ),
                       ),
                     ),
                   ],

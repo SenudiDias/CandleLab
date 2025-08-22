@@ -353,35 +353,36 @@ class MeltMeasure {
   double meltDiameter;
   double meltDepth;
   double fullMelt;
-  List<String> photoPaths;
+  List<String> photoUrls;
+  List<File> tempPhotos; // Add this line
 
   MeltMeasure({
     required this.time,
     this.meltDiameter = 0.0,
     this.meltDepth = 0.0,
     this.fullMelt = 0.0,
-    List<String>? photoPaths,
-  }) : photoPaths = photoPaths ?? [];
+    List<String>? photoUrls,
+    List<File>? tempPhotos, // Add this parameter
+  }) : photoUrls = photoUrls ?? [],
+       tempPhotos = tempPhotos ?? []; // Initialize tempPhotos
 
-  Map<String, dynamic> toJson() {
-    return {
-      'time': time,
-      'meltDiameter': meltDiameter,
-      'meltDepth': meltDepth,
-      'fullMelt': fullMelt,
-      'photoPaths': photoPaths,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'time': time,
+    'meltDiameter': meltDiameter,
+    'meltDepth': meltDepth,
+    'fullMelt': fullMelt,
+    'photoUrls': photoUrls,
+    // Note: tempPhotos are not serialized to JSON as they're temporary
+  };
 
-  factory MeltMeasure.fromJson(Map<String, dynamic> json) {
-    return MeltMeasure(
-      time: (json['time'] as num).toDouble(),
-      meltDiameter: (json['meltDiameter'] as num?)?.toDouble() ?? 0.0,
-      meltDepth: (json['meltDepth'] as num?)?.toDouble() ?? 0.0,
-      fullMelt: (json['fullMelt'] as num?)?.toDouble() ?? 0.0,
-      photoPaths: (json['photoPaths'] as List<dynamic>?)?.cast<String>() ?? [],
-    );
-  }
+  factory MeltMeasure.fromJson(Map<String, dynamic> json) => MeltMeasure(
+    time: (json['time'] as num).toDouble(),
+    meltDiameter: (json['meltDiameter'] as num?)?.toDouble() ?? 0.0,
+    meltDepth: (json['meltDepth'] as num?)?.toDouble() ?? 0.0,
+    fullMelt: (json['fullMelt'] as num?)?.toDouble() ?? 0.0,
+    photoUrls: List<String>.from(json['photoUrls'] ?? []),
+    tempPhotos: [], // Initialize as empty list
+  );
 }
 
 class FlameRecord {
@@ -392,7 +393,7 @@ class FlameRecord {
   bool sooting;
   Duration? fullBurningTime;
   String records;
-  List<String> photoPaths;
+  List<String> photoUrls;
   ScentThrow? scentThrow;
   List<MeltMeasure> meltMeasures;
 
@@ -403,7 +404,7 @@ class FlameRecord {
     this.sooting = false,
     this.fullBurningTime,
     this.records = '',
-    this.photoPaths = const [],
+    this.photoUrls = const [],
     this.scentThrow,
     List<MeltMeasure>? meltMeasures,
   }) : flameSizes = flameSizes ?? {0: '', 0.5: '', 1: ''},
@@ -424,7 +425,7 @@ class FlameRecord {
     'sooting': sooting,
     'fullBurningTime': fullBurningTime?.inMinutes,
     'records': records,
-    'photoPaths': photoPaths,
+    'photoUrls': photoUrls,
     'scentThrow': scentThrow?.toJson(),
     'meltMeasures': meltMeasures.map((measure) => measure.toJson()).toList(),
   };
@@ -444,7 +445,7 @@ class FlameRecord {
         ? Duration(minutes: (json['fullBurningTime'] as num).toInt())
         : null,
     records: json['records'] as String? ?? '',
-    photoPaths: List<String>.from(json['photoPaths'] ?? []),
+    photoUrls: List<String>.from(json['photoUrls'] ?? []),
     scentThrow: json['scentThrow'] != null
         ? ScentThrow.fromJson(json['scentThrow'] as Map<String, dynamic>)
         : null,
